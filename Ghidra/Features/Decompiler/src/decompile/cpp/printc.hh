@@ -205,6 +205,7 @@ public:
   void setHideImpliedExts(bool val) { option_hide_exts = val; }	///< Toggle whether implied extensions are hidden
   void setSpaceAfterComma(bool val) { option_space_after_comma = val; }
   void setNewlineBeforeOpeningBrace(bool val) { option_newline_before_opening_brace = val; }
+  void setNewlineBeforeElse(bool val) { option_newline_before_else = val; }
   void setNewlineAfterPrototype(bool val) { option_newline_after_prototype = val; }
   virtual ~PrintC(void) {}
   virtual void adjustTypeOperators(void);
