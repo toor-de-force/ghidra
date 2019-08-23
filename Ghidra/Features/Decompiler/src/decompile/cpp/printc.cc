@@ -2506,11 +2506,13 @@ void PrintC::emitBlockIf(const BlockIf *bl)
   emit->tagLine();
   emit->print("}");
   if (bl->getSize()==3) {
-  	if (option_newline_before_else) {
-		emit->tagLine();
+    if (option_newline_before_else) {
+      emit->tagLine();
+    } else {
+      emit->spaces(1);
   	}
     emit->print("else",EmitXml::keyword_color);
-    if (option_newline_before_else) {
+    if (option_newline_before_opening_brace) {
 	  emit->tagLine();
     } else {
 	  emit->spaces(1);
