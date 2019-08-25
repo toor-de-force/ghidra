@@ -467,5 +467,5 @@ void SleighArchitecture::shutdown(void)
     delete last_sleigh;
     last_sleigh = (Sleigh *)0;
   }
-  // description.clear();  // static vector is destroyed by the normal exit handler
+  description.clear();
 }
