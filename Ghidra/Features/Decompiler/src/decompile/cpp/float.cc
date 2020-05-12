@@ -43,6 +43,12 @@ inline int4 isinf(double x) {
 #define INFINITY HUGE_VAL
 #define NAN (INFINITY/INFINITY)
 
+#else
+
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=48891
+#define isnan std::isnan
+#define isinf std::isinf
+
 #endif
 
 /// Set format for a given encoding size according to IEEE 754 standards
