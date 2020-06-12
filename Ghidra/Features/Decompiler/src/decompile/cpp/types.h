@@ -109,6 +109,25 @@ typedef char int1;
 typedef uint8 uintp;
 #endif
 
+#if __FreeBSD__
+#if BYTE_ORDER == BIG_ENDIAN
+#define HOST_ENDIAN 1
+#else
+#define HOST_ENDIAN 0
+#endif
+typedef unsigned int uintm;
+typedef int intm;
+typedef unsigned long long uint8;
+typedef long long int8;
+typedef unsigned int uint4;
+typedef int int4;
+typedef unsigned short uint2;
+typedef short int2;
+typedef unsigned char uint1;
+typedef char int1;
+typedef unsigned long uintp;
+#endif
+
 #if defined(_WINDOWS)
 
 #if defined(_WIN64)
