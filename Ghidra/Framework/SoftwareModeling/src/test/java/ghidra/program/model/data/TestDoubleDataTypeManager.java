@@ -17,8 +17,8 @@ package ghidra.program.model.data;
 
 import java.util.*;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.util.*;
-import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 /**
@@ -55,12 +55,6 @@ public class TestDoubleDataTypeManager implements DataTypeManager {
 
 	@Override
 	public DataType addDataType(DataType dataType, DataTypeConflictHandler handler) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void addDataTypes(Collection<DataType> dataTypes, DataTypeConflictHandler handler,
-			TaskMonitor monitor) throws CancelledException {
 		throw new UnsupportedOperationException();
 	}
 

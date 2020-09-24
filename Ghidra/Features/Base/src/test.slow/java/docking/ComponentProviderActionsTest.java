@@ -337,7 +337,7 @@ public class ComponentProviderActionsTest extends AbstractGhidraHeadedIntegratio
 		// Note: there may be a test focus issue here.  If this test fails sporadically due to 
 		// how the action context is generated (it depends on focus).  It is only useful to fail
 		// here in development mode.
-		triggerKey(provider.getComponent(), controlEsc);
+		triggerKey(tool.getToolFrame(), controlEsc);
 		assertProviderIsHidden_InNonBatchMode();
 	}
 
@@ -376,7 +376,6 @@ public class ComponentProviderActionsTest extends AbstractGhidraHeadedIntegratio
 		provider.addToTool();
 		tool.showComponentProvider(provider, true);
 		waitForSwing();
-		waitForCondition(() -> provider.isVisible());
 	}
 
 	private void hideProvider() {
@@ -547,7 +546,6 @@ public class ComponentProviderActionsTest extends AbstractGhidraHeadedIntegratio
 		// simulate the user mousing over the toolbar button		
 		DockingActionIf closeAction = getAction(tool, provider.getOwner(), "Close Window");
 		assertNotNull("Provider action not installed in toolbar", closeAction);
-
 		DockingWindowManager.setMouseOverAction(closeAction);
 
 		performLaunchKeyStrokeDialogAction();
@@ -556,7 +554,6 @@ public class ComponentProviderActionsTest extends AbstractGhidraHeadedIntegratio
 		runSwing(() -> dialog.setKeyStroke(ks));
 
 		pressButtonByText(dialog, "OK");
-		waitForSwing();
 
 		assertFalse("Invalid key stroke: " + ks, runSwing(() -> dialog.isVisible()));
 	}

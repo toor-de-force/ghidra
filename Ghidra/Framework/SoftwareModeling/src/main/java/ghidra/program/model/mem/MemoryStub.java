@@ -21,7 +21,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import ghidra.framework.store.LockException;
-import ghidra.program.database.mem.*;
+import ghidra.program.database.mem.AddressSourceInfo;
+import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.address.*;
 import ghidra.program.model.listing.Program;
 import ghidra.util.exception.*;
@@ -234,16 +235,13 @@ public class MemoryStub implements Memory {
 
 	@Override
 	public MemoryBlock createBitMappedBlock(String name, Address start, Address mappedAddress,
-			long length, boolean overlay)
-			throws LockException, MemoryConflictException, AddressOverflowException {
+			long length) throws LockException, MemoryConflictException, AddressOverflowException {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public MemoryBlock createByteMappedBlock(String name, Address start, Address mappedAddress,
-			long length, ByteMappingScheme byteMappingScheme, boolean overlay)
-			throws LockException, MemoryConflictException, AddressOverflowException,
-			IllegalArgumentException {
+			long length) throws LockException, MemoryConflictException, AddressOverflowException {
 		throw new UnsupportedOperationException();
 	}
 

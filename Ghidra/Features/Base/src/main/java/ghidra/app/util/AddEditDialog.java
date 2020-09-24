@@ -102,7 +102,10 @@ public class AddEditDialog extends DialogComponentProvider {
 		}
 
 		if (primaryCheckBox.isEnabled() && primaryCheckBox.isSelected()) {
-			cmd.add(new SetLabelPrimaryCmd(addr, symbolName, parent));
+			boolean isLocal = isLocalNamespace(namespace, symbolName);
+			if (!isLocal) {
+				cmd.add(new SetLabelPrimaryCmd(addr, symbolName, parent));
+			}
 		}
 		if (entryPointCheckBox.isEnabled() &&
 			entryPointCheckBox.isSelected() != isCurrentlyEntryPoint) {

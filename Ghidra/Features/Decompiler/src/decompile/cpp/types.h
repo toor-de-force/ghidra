@@ -71,12 +71,8 @@ typedef char int1;
 typedef uint8 uintp;
 #endif
 
-#if defined (__linux__) && (defined (__i386__) || defined (__arm__))
-#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define HOST_ENDIAN 1
-#else
+#if defined (__linux__) && defined (__i386__)
 #define HOST_ENDIAN 0
-#endif
 typedef unsigned long uintm;
 typedef long intm;
 typedef unsigned long long uint8;
@@ -90,12 +86,8 @@ typedef char int1;
 typedef uint4 uintp;
 #endif
 
-#if defined (__linux__) && (defined (__x86_64__) || defined (__aarch64__))
-#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define HOST_ENDIAN 1
-#else
+#if defined (__linux__) && defined (__x86_64__)
 #define HOST_ENDIAN 0
-#endif
 typedef unsigned int uintm;
 typedef int intm;
 typedef unsigned long uint8;
@@ -247,7 +239,6 @@ CPUI_DEBUG        --    This is the ONE debug switch that should be passed in
 #ifdef CPUI_DEBUG
 # define OPACTION_DEBUG
 # define PRETTY_DEBUG
-//# define __REMOTE_SOCKET__
 //# define TYPEPROP_DEBUG
 //# define DFSVERIFY_DEBUG
 //# define BLOCKCONSISTENT_DEBUG

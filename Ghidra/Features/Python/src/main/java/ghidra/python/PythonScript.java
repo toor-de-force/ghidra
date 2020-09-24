@@ -59,31 +59,34 @@ public class PythonScript extends GhidraScript {
 				throw new AssertException("Could not get Ghidra Python interpreter!");
 			}
 		}
-		ResourceFile scriptSource = GhidraScriptUtil.findScriptByName(scriptName);
-		if (scriptSource != null) {
-			GhidraScriptProvider provider = GhidraScriptUtil.getProvider(scriptSource);
-			GhidraScript ghidraScript = provider.getScriptInstance(scriptSource, writer);
-			if (ghidraScript == null) {
-				throw new IllegalArgumentException("Script does not exist: " + scriptName);
-			}
 
-			if (scriptState == state) {
-				updateStateFromVariables();
-			}
+		for (ResourceFile dir : GhidraScriptUtil.getScriptSourceDirectories()) {
+			ResourceFile scriptSource = new ResourceFile(dir, scriptName);
+			if (scriptSource.exists()) {
+				GhidraScriptProvider provider = GhidraScriptUtil.getProvider(scriptSource);
+				GhidraScript ghidraScript = provider.getScriptInstance(scriptSource, writer);
+				if (ghidraScript == null) {
+					throw new IllegalArgumentException("Script does not exist: " + scriptName);
+				}
 
-			if (ghidraScript instanceof PythonScript) {
-				ghidraScript.set(scriptState, monitor, writer);
-				PythonScript pythonScript = (PythonScript) ghidraScript;
-				interpreter.execFile(pythonScript.getSourceFile(), pythonScript);
-			}
-			else {
-				ghidraScript.execute(scriptState, monitor, writer);
-			}
+				if (scriptState == state) {
+					updateStateFromVariables();
+				}
 
-			if (scriptState == state) {
-				loadVariablesFromState();
+				if (ghidraScript instanceof PythonScript) {
+					ghidraScript.set(scriptState, monitor, writer);
+					PythonScript pythonScript = (PythonScript) ghidraScript;
+					interpreter.execFile(pythonScript.getSourceFile(), pythonScript);
+				}
+				else {
+					ghidraScript.execute(scriptState, monitor, writer);
+				}
+
+				if (scriptState == state) {
+					loadVariablesFromState();
+				}
+				return;
 			}
-			return;
 		}
 		throw new IllegalArgumentException("Script does not exist: " + scriptName);
 	}

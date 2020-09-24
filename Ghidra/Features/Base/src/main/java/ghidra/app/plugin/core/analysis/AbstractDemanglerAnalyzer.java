@@ -44,7 +44,6 @@ public abstract class AbstractDemanglerAnalyzer extends AbstractAnalyzer {
 	public AbstractDemanglerAnalyzer(String name, String description) {
 		super(name, description, AnalyzerType.BYTE_ANALYZER);
 		setPriority(AnalysisPriority.DATA_TYPE_PROPOGATION.before().before().before());
-		setSupportsOneTimeAnalysis();
 	}
 
 	@Override
@@ -59,7 +58,7 @@ public abstract class AbstractDemanglerAnalyzer extends AbstractAnalyzer {
 
 		DemanglerOptions options = getOptions();
 		if (!validateOptions(options, log)) {
-			log.appendMsg(getName(), "Invalid demangler options--cannot demangle");
+			log.error(getName(), "Invalid demangler options--cannot demangle");
 			return false;
 		}
 
@@ -142,7 +141,7 @@ public abstract class AbstractDemanglerAnalyzer extends AbstractAnalyzer {
 		// Someone has already added arguments or return to the function signature
 		if (symbol.getSymbolType() == SymbolType.FUNCTION) {
 			Function function = (Function) symbol.getObject();
-			if (function.getSignatureSource().isHigherPriorityThan(SourceType.ANALYSIS)) {
+			if (function.getSignatureSource() != SourceType.DEFAULT) {
 				return true;
 			}
 		}
@@ -176,7 +175,8 @@ public abstract class AbstractDemanglerAnalyzer extends AbstractAnalyzer {
 	 * @param log the error log
 	 * @return the demangled object; null if unsuccessful
 	 */
-	protected DemangledObject demangle(String mangled, DemanglerOptions options, MessageLog log) {
+	protected DemangledObject demangle(String mangled, DemanglerOptions options,
+			MessageLog log) {
 
 		DemangledObject demangled = null;
 		try {
@@ -231,8 +231,9 @@ public abstract class AbstractDemanglerAnalyzer extends AbstractAnalyzer {
 			failMessage += errorMessage;
 		}
 
-		log.appendMsg(getName(), "Failed to apply mangled symbol at " + address + "; name:  " +
-			demangled.getMangledString() + failMessage);
+		log.appendMsg(getName(),
+			"Failed to apply mangled symbol at " + address + "; name:  " +
+				demangled.getMangledString() + failMessage);
 	}
 
 	protected String cleanSymbol(Address address, String name) {

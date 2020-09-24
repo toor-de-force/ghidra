@@ -20,11 +20,10 @@ import java.awt.Component;
 import java.util.*;
 
 import javax.swing.*;
-import javax.swing.event.TableModelEvent;
 
 import docking.widgets.table.*;
 import generic.jar.ResourceFile;
-import ghidra.app.script.GhidraScriptInfoManager;
+import ghidra.app.script.GhidraScriptUtil;
 import ghidra.app.script.ScriptInfo;
 import ghidra.docking.settings.Settings;
 import ghidra.framework.plugintool.ServiceProvider;
@@ -36,21 +35,19 @@ import ghidra.util.table.column.GColumnRenderer;
 import resources.Icons;
 
 class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Object> {
-	static final String SCRIPT_ACTION_COLUMN_NAME = "In Tool";
-	static final String SCRIPT_STATUS_COLUMN_NAME = "Status";
 
 	private static final String EMPTY_STRING = "";
 	private static final ImageIcon ERROR_IMG = Icons.ERROR_ICON;
 
+	final static String SCRIPT_ACTION_COLUMN_NAME = "In Tool";
+	final static String SCRIPT_STATUS_COLUMN_NAME = "Status";
+
 	private GhidraScriptComponentProvider provider;
 	private List<ResourceFile> scriptList = new ArrayList<>();
-	private final GhidraScriptInfoManager infoManager;
 
-	GhidraScriptTableModel(GhidraScriptComponentProvider provider,
-			GhidraScriptInfoManager infoManager) {
+	GhidraScriptTableModel(GhidraScriptComponentProvider provider) {
 		super(provider.getTool());
 		this.provider = provider;
-		this.infoManager = infoManager;
 	}
 
 	@Override
@@ -102,13 +99,12 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 	}
 
 	void insertScripts(List<ResourceFile> scriptFiles) {
-		int rowStart = scriptList.size();
 		for (ResourceFile script : scriptFiles) {
 			if (!scriptList.contains(script)) {
 				scriptList.add(script);
 			}
 		}
-		fireTableRowsInserted(rowStart, rowStart + scriptFiles.size() - 1);
+		fireTableDataChanged();
 	}
 
 	void removeScript(ResourceFile script) {
@@ -194,7 +190,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 	}
 
 	private class ScriptActionColumn
-			extends AbstractDynamicTableColumn<ResourceFile, Boolean, Object> {
+	extends AbstractDynamicTableColumn<ResourceFile, Boolean, Object> {
 
 		@Override
 		public String getColumnDescription() {
@@ -211,16 +207,6 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 				ServiceProvider sp) throws IllegalArgumentException {
 			return provider.getActionManager().hasScriptAction(rowObject);
 		}
-	}
-
-	@Override
-	public void fireTableChanged(TableModelEvent e) {
-		if (SwingUtilities.isEventDispatchThread()) {
-			super.fireTableChanged(e);
-			return;
-		}
-		final TableModelEvent e1 = e;
-		SwingUtilities.invokeLater(() -> GhidraScriptTableModel.super.fireTableChanged(e1));
 	}
 
 	private class StatusColumn extends AbstractDynamicTableColumn<ResourceFile, ImageIcon, Object> {
@@ -251,7 +237,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 				JLabel label = (JLabel) super.getTableCellRendererComponent(data);
 
 				ResourceFile file = (ResourceFile) data.getRowObject();
-				ScriptInfo info = infoManager.getExistingScriptInfo(file);
+				ScriptInfo info = GhidraScriptUtil.getScriptInfo(file);
 
 				label.setText(null);
 				label.setToolTipText(null);
@@ -286,13 +272,13 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 
 		@Override
 		public String getColumnName() {
-			return SCRIPT_STATUS_COLUMN_NAME;
+			return "Status";
 		}
 
 		@Override
 		public ImageIcon getValue(ResourceFile rowObject, Settings settings, Object data,
 				ServiceProvider sp) throws IllegalArgumentException {
-			ScriptInfo info = infoManager.getExistingScriptInfo(rowObject);
+			ScriptInfo info = GhidraScriptUtil.getScriptInfo(rowObject);
 			if (info.isCompileErrors() || info.isDuplicate()) {
 				return ERROR_IMG;
 			}
@@ -332,7 +318,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 	}
 
 	private class DescriptionColumn
-			extends AbstractDynamicTableColumn<ResourceFile, String, Object> {
+	extends AbstractDynamicTableColumn<ResourceFile, String, Object> {
 
 		@Override
 		public String getColumnName() {
@@ -342,7 +328,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 		@Override
 		public String getValue(ResourceFile rowObject, Settings settings, Object data,
 				ServiceProvider sp) throws IllegalArgumentException {
-			ScriptInfo info = infoManager.getExistingScriptInfo(rowObject);
+			ScriptInfo info = GhidraScriptUtil.getScriptInfo(rowObject);
 			return info.getDescription();
 		}
 
@@ -353,9 +339,10 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 	}
 
 	private class KeyBindingColumn
-			extends AbstractDynamicTableColumn<ResourceFile, KeyBindingsInfo, Object> {
+	extends AbstractDynamicTableColumn<ResourceFile, KeyBindingsInfo, Object> {
 
-		private GColumnRenderer<KeyBindingsInfo> renderer = new AbstractGColumnRenderer<>() {
+		private GColumnRenderer<KeyBindingsInfo> renderer =
+				new AbstractGColumnRenderer<>() {
 
 			@Override
 			public Component getTableCellRendererComponent(GTableCellRenderingData data) {
@@ -378,7 +365,8 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 
 					if (info.hasAction) {
 						component.setForeground(Color.BLACK);
-						component.setToolTipText("Keybinding for action in tool" + keybindingText);
+						component.setToolTipText(
+							"Keybinding for action in tool" + keybindingText);
 					}
 					else {
 						component.setForeground(Color.LIGHT_GRAY);
@@ -388,7 +376,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 
 				if (isSelected) {
 					Color selectedForegroundColor =
-						(info.errorMessage != null) ? Color.PINK : Color.WHITE;
+							(info.errorMessage != null) ? Color.PINK : Color.WHITE;
 					component.setForeground(selectedForegroundColor);
 				}
 				return component;
@@ -414,7 +402,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 		@Override
 		public KeyBindingsInfo getValue(ResourceFile rowObject, Settings settings, Object data,
 				ServiceProvider sp) throws IllegalArgumentException {
-			ScriptInfo info = infoManager.getExistingScriptInfo(rowObject);
+			ScriptInfo info = GhidraScriptUtil.getScriptInfo(rowObject);
 			KeyStroke actionKeyStroke = provider.getActionManager().getKeyBinding(rowObject);
 			boolean isActionBinding = false;
 			KeyStroke keyBinding = info.getKeyBinding();
@@ -472,7 +460,7 @@ class GhidraScriptTableModel extends GDynamicColumnTableModel<ResourceFile, Obje
 		@Override
 		public String getValue(ResourceFile rowObject, Settings settings, Object data,
 				ServiceProvider sp) throws IllegalArgumentException {
-			ScriptInfo info = infoManager.getExistingScriptInfo(rowObject);
+			ScriptInfo info = GhidraScriptUtil.getScriptInfo(rowObject);
 			return getCategoryString(info);
 		}
 

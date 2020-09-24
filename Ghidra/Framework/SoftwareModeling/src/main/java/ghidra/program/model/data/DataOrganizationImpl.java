@@ -558,7 +558,14 @@ public class DataOrganizationImpl implements DataOrganization {
 
 			// Check each component and get the least common multiple of their forced minimum alignments.
 			int componentForcedLCM = 0;
-			for (DataTypeComponent dataTypeComponent : composite.getDefinedComponents()) {
+			DataTypeComponent[] dataTypeComponents;
+			if (composite instanceof Structure) {
+				dataTypeComponents = ((Structure) composite).getDefinedComponents();
+			}
+			else {
+				dataTypeComponents = composite.getComponents();
+			}
+			for (DataTypeComponent dataTypeComponent : dataTypeComponents) {
 				if (dataTypeComponent.isBitFieldComponent()) {
 					continue;
 				}

@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +16,6 @@
  */
 package ghidra.program.model.block;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-
 import ghidra.program.model.address.*;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
@@ -25,12 +23,15 @@ import ghidra.program.model.symbol.*;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+
 /**
  * <CODE>OverlapCodeSubModel</CODE> (O-model) defines subroutines with a
  * unique entry point, which may share code with other subroutines. Each entry-
  * point may either be a source or called entry-point and is identified using
  * the MultEntSubModel.  This model defines the set of addresses contained
- * within each subroutine based upon the possible flows from its entry- point.
+ * within each subroutine based upon the possible flows from its' entry- point.
  * Flows which encounter another entry-point are terminated.
  * <P>
  * NOTE: This differs from the original definition of an entry point, however,
@@ -103,25 +104,20 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
         // Build model-O subroutine from basic blocks
         while (!todoList.isEmpty()) {
         	
-        	if (monitor.isCancelled()) {
-				throw new CancelledException();
-			}
+        	if (monitor.isCancelled())
+        		throw new CancelledException();
         
         	// Get basic block at the specified address 
         	Address a = todoList.removeLast();  
         	if (addrSet.contains(a))
-			 {
-				continue; // already processed this block   
-			}
+        		continue; // already processed this block   
 	        CodeBlock bblock = bbModel.getFirstCodeBlockContaining(a, monitor);
-	        if (bblock == null) {
-				continue;
-			}
+	        if (bblock == null)
+	        	continue;
 	        	
 	        // Verify that the block contains instructions
-	        if (listing.getInstructionAt(a) == null) {
-				continue;
-			}
+	        if (listing.getInstructionAt(a) == null)
+	        	continue;
 	        	
 	        // Add basic block to subroutine address set
 	        addrSet.add(bblock);
@@ -144,8 +140,7 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getCodeBlockAt(ghidra.program.model.address.Address, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public CodeBlock getCodeBlockAt(Address addr, TaskMonitor monitor) throws CancelledException {
+    public CodeBlock getCodeBlockAt(Address addr, TaskMonitor monitor) throws CancelledException {
 
         // First check out the Block cache
         CodeBlock block = foundOSubs.getBlockAt(addr);
@@ -175,8 +170,7 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
      *              contains the address empty array otherwise.
      * @throws CancelledException if the monitor cancels the operation.
      */
-    @Override
-	public CodeBlock[] getCodeBlocksContaining(Address addr, TaskMonitor monitor) throws CancelledException {
+    public CodeBlock[] getCodeBlocksContaining(Address addr, TaskMonitor monitor) throws CancelledException {
 
         // First check out the Block cache
         CodeBlock[] blocks = foundOSubs.getBlocksContaining(addr);
@@ -185,9 +179,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
         }
 
         CodeBlock modelMSub = modelM.getFirstCodeBlockContaining(addr, monitor);
-        if (modelMSub == null) {
-			return emptyBlockArray;
-		}
+        if (modelMSub == null)
+            return emptyBlockArray;
         Address[] entPts = modelMSub.getStartAddresses();
 
         // Single-entry MSub same as OSub
@@ -202,9 +195,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
         ArrayList<CodeBlock> blockList = new ArrayList<CodeBlock>();
         for (int i = 0; i < cnt; i++) {
             CodeBlock block = getSubroutine(entPts[i], monitor);
-            if (block.contains(addr)) {
-				blockList.add(block);
-			}
+            if (block.contains(addr))
+                blockList.add(block);
         }
         return blockList.toArray(new CodeBlock[blockList.size()]);
     }
@@ -213,8 +205,7 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getFirstCodeBlockContaining(ghidra.program.model.address.Address, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public CodeBlock getFirstCodeBlockContaining(Address addr, TaskMonitor monitor) throws CancelledException {
+    public CodeBlock getFirstCodeBlockContaining(Address addr, TaskMonitor monitor) throws CancelledException {
 
         // First check out the Block cache
         CodeBlock block = foundOSubs.getFirstBlockContaining(addr);
@@ -223,9 +214,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
         }
 
         CodeBlock modelMSub = modelM.getFirstCodeBlockContaining(addr, monitor);
-        if (modelMSub == null) {
-			return null;
-		}
+        if (modelMSub == null)
+            return null;
         Address[] entPts = modelMSub.getStartAddresses();
 
         // Single-entry MSub same as OSub
@@ -237,9 +227,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
         // Return first OSub which contains addr
         for (int i = 0; i < cnt; i++) {
             block = getSubroutine(entPts[i], monitor);
-            if (block != null && block.contains(addr)) {
-				return block;
-			}
+            if (block != null && block.contains(addr))
+                return block;
         }
         return null;
     }
@@ -247,16 +236,14 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getCodeBlocks(ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public CodeBlockIterator getCodeBlocks(TaskMonitor monitor) throws CancelledException {
+    public CodeBlockIterator getCodeBlocks(TaskMonitor monitor) throws CancelledException {
         return new SingleEntSubIterator(this, monitor);
     }
 
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getCodeBlocksContaining(ghidra.program.model.address.AddressSetView, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public CodeBlockIterator getCodeBlocksContaining(AddressSetView addrSet, TaskMonitor monitor) throws CancelledException {
+    public CodeBlockIterator getCodeBlocksContaining(AddressSetView addrSet, TaskMonitor monitor) throws CancelledException {
         return new SingleEntSubIterator(this, addrSet, monitor);
     }
 
@@ -272,8 +259,7 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
 	/**
 	 * @see ghidra.program.model.block.CodeBlockModel#getProgram()
 	 */
-    @Override
-	public Program getProgram() {
+    public Program getProgram() {
         return program;
     }
 
@@ -288,16 +274,14 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getName(ghidra.program.model.block.CodeBlock)
      */
-    @Override
-	public String getName(CodeBlock block) {
+    public String getName(CodeBlock block) {
         // get the start address for the block
         // look up the symbol in the symbol table.
         // it should have one if anyone calls it.
         // if not, make up a label
 
-        if (!(block.getModel() instanceof OverlapCodeSubModel)) {
-			throw new IllegalArgumentException();
-		}
+        if (!(block.getModel() instanceof OverlapCodeSubModel))
+            throw new IllegalArgumentException();
 
         Address start = block.getFirstStartAddress();
 
@@ -325,8 +309,7 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
      *
      * @return flow type of this node
      */
-    @Override
-	public FlowType getFlowType(CodeBlock block) {
+    public FlowType getFlowType(CodeBlock block) {
         /* If there are multiple unique ways out of the node, then we
             should return FlowType.UNKNOWN (or FlowType.MULTIFLOW ?).
            Possible considerations for the future which are particularly
@@ -335,9 +318,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
             (as opposed to jumping within the subroutine).
             Might want to consider FlowType.MULTITERMINAL for multiple returns? */
 
-        if (!(block.getModel() instanceof OverlapCodeSubModel)) {
-			throw new IllegalArgumentException();
-		}
+        if (!(block.getModel() instanceof OverlapCodeSubModel))
+            throw new IllegalArgumentException();
 
         return RefType.FLOW;
     }
@@ -345,12 +327,10 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getSources(ghidra.program.model.block.CodeBlock, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public CodeBlockReferenceIterator getSources(CodeBlock block, TaskMonitor monitor) throws CancelledException {
+    public CodeBlockReferenceIterator getSources(CodeBlock block, TaskMonitor monitor) throws CancelledException {
 
-        if (!(block.getModel() instanceof OverlapCodeSubModel)) {
-			throw new IllegalArgumentException();
-		}
+        if (!(block.getModel() instanceof OverlapCodeSubModel))
+            throw new IllegalArgumentException();
 
         return new SubroutineSourceReferenceIterator(block, monitor);
     }
@@ -358,12 +338,10 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getNumSources(ghidra.program.model.block.CodeBlock, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public int getNumSources(CodeBlock block, TaskMonitor monitor) throws CancelledException {
+    public int getNumSources(CodeBlock block, TaskMonitor monitor) throws CancelledException {
     	
-    	if (!(block.getModel() instanceof OverlapCodeSubModel)) {
-			throw new IllegalArgumentException();
-		}
+    	if (!(block.getModel() instanceof OverlapCodeSubModel))
+            throw new IllegalArgumentException();
             
     	return SubroutineSourceReferenceIterator.getNumSources(block, monitor);
     }
@@ -371,8 +349,7 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getDestinations(ghidra.program.model.block.CodeBlock, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public CodeBlockReferenceIterator getDestinations(CodeBlock block, TaskMonitor monitor) throws CancelledException {
+    public CodeBlockReferenceIterator getDestinations(CodeBlock block, TaskMonitor monitor) throws CancelledException {
         // destinations of Fallthroughs are the follow on block
         //    destinations of all others are the instruction's operand referents
 
@@ -390,9 +367,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
         //          nor that any destination is a good destination unless the instruction
         //          is looked at.
 
-        if (!(block.getModel() instanceof OverlapCodeSubModel)) {
-			throw new IllegalArgumentException();
-		}
+        if (!(block.getModel() instanceof OverlapCodeSubModel))
+            throw new IllegalArgumentException();
 
         return new SubroutineDestReferenceIterator(block, monitor);
     }
@@ -400,12 +376,10 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
     /**
      * @see ghidra.program.model.block.CodeBlockModel#getNumDestinations(ghidra.program.model.block.CodeBlock, ghidra.util.task.TaskMonitor)
      */
-    @Override
-	public int getNumDestinations(CodeBlock block, TaskMonitor monitor) throws CancelledException {
+    public int getNumDestinations(CodeBlock block, TaskMonitor monitor) throws CancelledException {
 
-        if (!(block.getModel() instanceof OverlapCodeSubModel)) {
-			throw new IllegalArgumentException();
-		}
+        if (!(block.getModel() instanceof OverlapCodeSubModel))
+            throw new IllegalArgumentException();
 
 		return SubroutineDestReferenceIterator.getNumDestinations(block, monitor);
     }
@@ -419,9 +393,8 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
      */
     protected CodeBlock createSub(AddressSetView addrSet, Address entryPt) {
     	
-    	if (addrSet.isEmpty()) {
+    	if (addrSet.isEmpty())
 			return null;
-		}
 			
         Address[] entryPts = new Address[1];
         entryPts[0] = entryPt;
@@ -435,7 +408,6 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
 	/**
 	 * @see ghidra.program.model.block.CodeBlockModel#getBasicBlockModel()
 	 */
-	@Override
 	public CodeBlockModel getBasicBlockModel() {
 		return modelM.getBasicBlockModel();
 	}
@@ -443,7 +415,6 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
 	/**
 	 * @see ghidra.program.model.block.CodeBlockModel#getName()
 	 */
-	@Override
 	public String getName() {
 		return OVERLAP_MODEL_NAME;
 	}
@@ -451,7 +422,6 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
 	/**
 	 * @see ghidra.program.model.block.SubroutineBlockModel#getBaseSubroutineModel()
 	 */
-	@Override
 	public SubroutineBlockModel getBaseSubroutineModel() {
 		return modelM;
 	}
@@ -459,12 +429,10 @@ public class OverlapCodeSubModel implements SubroutineBlockModel {
 	/**
 	 * @see ghidra.program.model.block.CodeBlockModel#allowsBlockOverlap()
 	 */
-	@Override
 	public boolean allowsBlockOverlap() {
 		return true;
 	}
 
-	@Override
 	public boolean externalsIncluded() {
 		return modelM.externalsIncluded();
 	}

@@ -21,14 +21,14 @@ import javax.swing.Icon;
 
 import docking.action.MenuData;
 import ghidra.framework.main.AppInfo;
-import ghidra.framework.main.datatable.ProjectDataContext;
-import ghidra.framework.main.datatable.FrontendProjectTreeAction;
+import ghidra.framework.main.datatable.ProjectDataActionContext;
+import ghidra.framework.main.datatable.ProjectDataContextAction;
 import ghidra.framework.model.*;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.util.HTMLUtilities;
 import ghidra.util.HelpLocation;
 
-public class ProjectDataOpenToolAction extends FrontendProjectTreeAction {
+public class ProjectDataOpenToolAction extends ProjectDataContextAction {
 	private String toolName;
 
 	public ProjectDataOpenToolAction(String owner, String group, String toolName, Icon icon) {
@@ -41,13 +41,13 @@ public class ProjectDataOpenToolAction extends FrontendProjectTreeAction {
 	}
 
 	@Override
-	protected void actionPerformed(ProjectDataContext context) {
+	protected void actionPerformed(ProjectDataActionContext context) {
 		List<DomainFile> selectedFiles = context.getSelectedFiles();
 		openInTool(selectedFiles);
 	}
 
 	@Override
-	protected boolean isEnabledForContext(ProjectDataContext context) {
+	protected boolean isEnabledForContext(ProjectDataActionContext context) {
 		return context.getSelectedFiles().size() > 0 && context.getSelectedFolders().size() == 0;
 	}
 

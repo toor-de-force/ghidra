@@ -36,22 +36,20 @@ import resources.ResourceManager;
  * This class parses the meta-data about a script.
  */
 public class ScriptInfo {
-	/**
-	 * The delimiter used in categories and menu paths.
-	 */
-	public static final String DELIMITTER = ".";
-
-	static final String AT_AUTHOR = "@author";
-	static final String AT_CATEGORY = "@category";
-	static final String AT_KEYBINDING = "@keybinding";
-	static final String AT_MENUPATH = "@menupath";
-	static final String AT_TOOLBAR = "@toolbar";
 
 	private static final Pattern DOCUMENTATION_START = Pattern.compile("/\\*");
 	private static final Pattern DOCUMENTATION_END = Pattern.compile("\\*/");
 
-	// omit from METADATA to avoid pre-populating in new scripts
-	private static final String AT_IMPORTPACKAGE = "@importpackage";
+	/**
+	 * The delimiter used to categories and menu paths.
+	 */
+	public static final String DELIMITTER = ".";
+
+	public static final String AT_AUTHOR = "@author";
+	public static final String AT_CATEGORY = "@category";
+	public static final String AT_KEYBINDING = "@keybinding";
+	public static final String AT_MENUPATH = "@menupath";
+	public static final String AT_TOOLBAR = "@toolbar";
 
 	public static final String[] METADATA =
 		{ AT_AUTHOR, AT_CATEGORY, AT_KEYBINDING, AT_MENUPATH, AT_TOOLBAR, };
@@ -70,14 +68,13 @@ public class ScriptInfo {
 	private String[] menupath = new String[0];
 	private String toolbar;
 	private ImageIcon toolbarImage;
-	private String importpackage;
 
 	/**
 	 * Constructs a new script.
 	 * @param provider the script provider (for example, java or python)
 	 * @param sourceFile the script source file
 	 */
-	ScriptInfo(GhidraScriptProvider provider, ResourceFile sourceFile) {
+	public ScriptInfo(GhidraScriptProvider provider, ResourceFile sourceFile) {
 		this.provider = provider;
 		this.sourceFile = sourceFile;
 
@@ -95,7 +92,6 @@ public class ScriptInfo {
 		menupath = new String[0];
 		toolbar = null;
 		toolbarImage = null;
-		importpackage = null;
 		keybindingErrorMessage = null;
 	}
 
@@ -128,7 +124,6 @@ public class ScriptInfo {
 	 * @return the script author information.
 	 */
 	public String getAuthor() {
-		parseHeader();
 		return author;
 	}
 
@@ -230,7 +225,7 @@ public class ScriptInfo {
 			description = buffer.toString();
 			modified = sourceFile.lastModified();
 		}
-		catch (IOException e) {
+		catch (Exception e) {
 			Msg.debug(this, "Unexpected exception reading script: " + sourceFile, e);
 		}
 		finally {
@@ -275,9 +270,6 @@ public class ScriptInfo {
 			}
 			else if (line.startsWith(AT_TOOLBAR)) {
 				toolbar = getTagValue(AT_TOOLBAR, line);
-			}
-			else if (line.startsWith(AT_IMPORTPACKAGE)) {
-				importpackage = getTagValue(AT_IMPORTPACKAGE, line);
 			}
 		}
 		catch (Exception e) {
@@ -402,9 +394,6 @@ public class ScriptInfo {
 		return keyBinding;
 	}
 
-	/**
-	 * @return an error resulting from parsing keybinding metadata 
-	 */
 	public String getKeyBindingErrorMessage() {
 		return keybindingErrorMessage;
 	}
@@ -415,6 +404,7 @@ public class ScriptInfo {
 	 * @return the script tool bar icon
 	 */
 	public ImageIcon getToolBarImage(boolean scaled) {
+
 		parseHeader();
 		if (toolbar == null) {
 			return null;
@@ -439,20 +429,10 @@ public class ScriptInfo {
 	}
 
 	/**
-	 * Returns the script imports
-	 * @return the script imports
-	 */
-	public String getImportPackage() {
-		parseHeader();
-		return importpackage;
-	}
-
-	/**
 	 * Returns a string designed to be used as a tool tip for describing this script
 	 * @return a string designed to be used as a tool tip
 	 */
 	public String getToolTipText() {
-		parseHeader();
 		String htmlDescription = "No Description";
 		if (description != null) {
 			htmlDescription = escapeHTML(description);
@@ -462,6 +442,7 @@ public class ScriptInfo {
 		String space = HTML_SPACE;
 		String htmlAuthor = bold("Author:") + space + escapeHTML(toString(author));
 		String htmlCategory = bold("Category:") + space + escapeHTML(toString(category));
+
 		String htmlKeyBinding = bold("Key Binding:") + space + getKeybindingToolTip();
 		String htmlMenuPath = bold("Menu Path:") + space + escapeHTML(toString(menupath));
 
@@ -506,16 +487,10 @@ public class ScriptInfo {
 		return StringUtils.defaultString(joined);
 	}
 
-	/**
-	 * @return true if the script either has compiler errors, or is a duplicate
-	 */
 	public boolean hasErrors() {
 		return isCompileErrors() || isDuplicate();
 	}
 
-	/**
-	 * @return a generic error message
-	 */
 	public String getErrorMessage() {
 		if (isCompileErrors()) {
 			return "Script contains compiler errors";

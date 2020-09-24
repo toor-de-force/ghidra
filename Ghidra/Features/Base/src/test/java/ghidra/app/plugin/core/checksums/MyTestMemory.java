@@ -20,7 +20,8 @@ import java.io.InputStream;
 import java.util.List;
 
 import ghidra.framework.store.LockException;
-import ghidra.program.database.mem.*;
+import ghidra.program.database.mem.AddressSourceInfo;
+import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.address.*;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.*;
@@ -102,15 +103,13 @@ class MyTestMemory extends AddressSet implements Memory {
 
 	@Override
 	public MemoryBlock createBitMappedBlock(String name, Address start, Address overlayAddress,
-			long length, boolean overlay) throws MemoryConflictException, AddressOverflowException {
+			long length) throws MemoryConflictException, AddressOverflowException {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public MemoryBlock createByteMappedBlock(String name, Address start, Address mappedAddress,
-			long length, ByteMappingScheme byteMappingScheme, boolean overlay)
-			throws LockException,
-			MemoryConflictException, AddressOverflowException, IllegalArgumentException {
+	public MemoryBlock createByteMappedBlock(String name, Address start, Address overlayAddress,
+			long length) throws MemoryConflictException, AddressOverflowException {
 		throw new UnsupportedOperationException();
 	}
 

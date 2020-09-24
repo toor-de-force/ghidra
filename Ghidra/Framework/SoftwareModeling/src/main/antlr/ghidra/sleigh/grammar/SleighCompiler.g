@@ -212,11 +212,7 @@ fielddef
 		} fieldmods) {
 			if ($fielddef.size() > 0 && $fielddef::fieldQuality != null) {
 				if ($tokendef.size() > 0 && $tokendef::tokenSymbol != null) {
-					if ($tokendef::tokenSymbol.getToken().getSize()*8 <= $fielddef::fieldQuality.high) {
-						reportError(find($t), "field high must be less than token size");
-					} else {
-						sc.addTokenField(find(n), $tokendef::tokenSymbol, $fielddef::fieldQuality);
-					}
+					sc.addTokenField(find(n), $tokendef::tokenSymbol, $fielddef::fieldQuality);
 				} else if ($contextdef.size() > 0 && $contextdef::varnode != null) {
 					if (!sc.addContextField($contextdef::varnode, $fielddef::fieldQuality)) {
 						reportError(find($t), "all context definitions must come before constructors");

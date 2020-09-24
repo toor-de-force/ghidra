@@ -55,7 +55,7 @@ public class RepositoryManager {
 	 * @param enableLocalPasswords if true user passwords will be maintained 
 	 * 			within local 'users' file
 	 * @param defaultPasswordExpirationDays password expiration in days when 
-	 * 			local passwords are enabled (0 = no expiration)
+	 * 			local passwords are enabled
 	 * @param anonymousAccessAllowed if true server permits anonymous access
 	 * to repositories.  
 	 * @throws IOException if IO error occurs
@@ -271,16 +271,16 @@ public class RepositoryManager {
 
 		log.info("Known Repositories:");
 		String[] names = getRepositoryNames(rootDirFile);
-		for (String name : names) {
-			log.info("   " + name);
+		for (int i = 0; i < names.length; i++) {
+			log.info("   " + names[i]);
 		}
 		if (names.length == 0) {
 			log.info("   <none>");
 		}
-		for (String name : names) {
-			File f = new File(rootDirFile, NamingUtilities.mangle(name));
+		for (int i = 0; i < names.length; i++) {
+			File f = new File(rootDirFile, NamingUtilities.mangle(names[i]));
 			if (!f.isDirectory()) {
-				log.error("Error while processing repository " + name +
+				log.error("Error while processing repository " + names[i] +
 					", directory not found: " + f);
 				continue;
 			}
@@ -288,14 +288,15 @@ public class RepositoryManager {
 				throw new IOException(f.getAbsolutePath() + " can not be written to");
 			}
 			try {
-				Repository rep = new Repository(this, null, f, name);
+				Repository rep = new Repository(this, null, f, names[i]);
+				String name = rep.getName();
 				repositoryMap.put(name, rep);
 			}
 			catch (UserAccessException e) {
 				// ignore
 			}
 			catch (Exception e) {
-				log.error("Error while processing repository " + name + ", " + e.getMessage());
+				log.error("Error while processing repository " + names[i] + ", " + e.getMessage());
 				continue;
 			}
 		}
@@ -362,16 +363,16 @@ public class RepositoryManager {
 			return new String[0];
 		}
 		ArrayList<String> list = new ArrayList<>(dirList.length);
-		for (File element : dirList) {
-			if (!element.isDirectory() ||
-				LocalFileSystem.isHiddenDirName(element.getName())) {
+		for (int i = 0; i < dirList.length; i++) {
+			if (!dirList[i].isDirectory() ||
+				LocalFileSystem.isHiddenDirName(dirList[i].getName())) {
 				continue;
 			}
-			if (!NamingUtilities.isValidMangledName(element.getName())) {
-				log.warn("Ignoring repository directory with bad name: " + element);
+			if (!NamingUtilities.isValidMangledName(dirList[i].getName())) {
+				log.warn("Ignoring repository directory with bad name: " + dirList[i]);
 				continue;
 			}
-			list.add(NamingUtilities.demangle(element.getName()));
+			list.add(NamingUtilities.demangle(dirList[i].getName()));
 		}
 		Collections.sort(list);
 		String[] names = new String[list.size()];

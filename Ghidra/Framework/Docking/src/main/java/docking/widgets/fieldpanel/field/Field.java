@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,16 +63,14 @@ public interface Field {
 
 	/**
 	 * Paints this field.
-	 * @param c the component to paint onto
+	 *
 	 * @param g the graphics context.
 	 * @param context common paint parameters
-	 * @param clip the clipping region to paint into 
 	 * @param colorManager contains background color information for the field.
 	 * @param cursorLoc the row,column cursor location within the field or null if the field does
 	 * not contain the cursor
-	 * @param rowHeight the number of pixels in each row of text in the field.
 	 */
-	void paint(JComponent c, Graphics g, PaintContext context, Rectangle clip,
+	void paint(JComponent c, Graphics g, PaintContext context,
 			FieldBackgroundColorManager colorManager, RowColLocation cursorLoc, int rowHeight);
 
 	/**

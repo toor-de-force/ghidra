@@ -332,7 +332,6 @@ public class ProgramBuilder {
 			// can't happen
 		}
 		catch (Exception e) {
-			e.printStackTrace();
 			throw new RuntimeException("Exception building memory", e);
 		}
 		endTransaction();
@@ -420,8 +419,7 @@ public class ProgramBuilder {
 		startTransaction();
 		MemoryBlock block = program.getMemory().getBlock(address);
 		if (block == null) {
-			createMemory("Block_" + stringAddress.toString().replace(':', '_'), stringAddress,
-				bytes.length);
+			createMemory("Block_" + stringAddress, stringAddress, bytes.length);
 		}
 
 		Memory memory = program.getMemory();

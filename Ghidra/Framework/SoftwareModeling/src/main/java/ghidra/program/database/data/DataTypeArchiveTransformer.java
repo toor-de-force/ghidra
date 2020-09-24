@@ -30,6 +30,7 @@ import docking.framework.DockingApplicationConfiguration;
 import docking.widgets.label.GDLabel;
 import ghidra.GhidraApplicationLayout;
 import ghidra.GhidraLaunchable;
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.framework.Application;
 import ghidra.framework.ApplicationConfiguration;
 import ghidra.program.model.data.*;
@@ -471,7 +472,8 @@ public class DataTypeArchiveTransformer implements GhidraLaunchable {
 	}
 
 	private static DataTypeComponent getNamedComponent(Composite composite, String fieldName) {
-		for (DataTypeComponent dataTypeComponent : composite.getDefinedComponents()) {
+		DataTypeComponent[] components = composite.getComponents();
+		for (DataTypeComponent dataTypeComponent : components) {
 			if (fieldName.equals(dataTypeComponent.getFieldName())) {
 				return dataTypeComponent; // found match so return it.
 			}

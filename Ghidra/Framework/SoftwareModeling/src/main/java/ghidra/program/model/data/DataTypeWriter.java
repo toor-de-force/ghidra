@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -351,7 +352,7 @@ public class DataTypeWriter {
 	}
 
 	private boolean containsComposite(Composite container, Composite contained) {
-		for (DataTypeComponent component : container.getDefinedComponents()) {
+		for (DataTypeComponent component : container.getComponents()) {
 			DataType dt = getBaseArrayTypedefType(component.getDataType());
 			if (dt instanceof Composite && dt.getName().equals(contained.getName()) &&
 				dt.isEquivalent(contained)) {

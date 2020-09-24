@@ -125,14 +125,14 @@ public class DecompilerProvider extends NavigatableComponentProviderAdapter
 
 		@Override
 		public void serviceRemoved(Class<?> interfaceClass, Object service) {
-			if (interfaceClass.equals(GraphDisplayBroker.class)) {
+			if (interfaceClass.equals(GraphService.class)) {
 				graphServiceRemoved();
 			}
 		}
 
 		@Override
 		public void serviceAdded(Class<?> interfaceClass, Object service) {
-			if (interfaceClass.equals(GraphDisplayBroker.class)) {
+			if (interfaceClass.equals(GraphService.class)) {
 				graphServiceAdded();
 			}
 		}
@@ -220,10 +220,7 @@ public class DecompilerProvider extends NavigatableComponentProviderAdapter
 			return null;
 		}
 		Function function = controller.getFunction();
-		if (function == null) {
-			return null;
-		}
-		Address entryPoint = function.getEntryPoint();
+		Address entryPoint = function != null ? function.getEntryPoint() : null;
 		boolean isDecompiling = controller.isDecompiling();
 		return new DecompilerActionContext(this, entryPoint, isDecompiling);
 	}
@@ -967,10 +964,7 @@ public class DecompilerProvider extends NavigatableComponentProviderAdapter
 	}
 
 	private void graphServiceRemoved() {
-		if (graphASTControlFlowAction == null) {
-			return;
-		}
-		if (tool.getService(GraphDisplayBroker.class) == null) {
+		if (graphASTControlFlowAction != null && tool.getService(GraphService.class) == null) {
 			tool.removeAction(graphASTControlFlowAction);
 			graphASTControlFlowAction.dispose();
 			graphASTControlFlowAction = null;
@@ -978,8 +972,7 @@ public class DecompilerProvider extends NavigatableComponentProviderAdapter
 	}
 
 	private void graphServiceAdded() {
-		GraphDisplayBroker service = tool.getService(GraphDisplayBroker.class);
-		if (service != null && service.getDefaultGraphDisplayProvider() != null) {
+		if (graphASTControlFlowAction == null && tool.getService(GraphService.class) != null) {
 			graphASTControlFlowAction = new GraphASTControlFlowAction();
 			addLocalAction(graphASTControlFlowAction);
 		}

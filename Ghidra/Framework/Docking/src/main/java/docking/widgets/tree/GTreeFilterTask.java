@@ -37,7 +37,7 @@ public class GTreeFilterTask extends GTreeTask {
 	@Override
 	public void run(TaskMonitor monitor) {
 		if (filter == null) {
-			runOnSwingThread(() -> tree.swingRestoreNonFilteredRootNode());
+			tree.restoreNonFilteredRootNode();
 			restoreInSameTask(monitor);
 			return;
 		}
@@ -54,7 +54,7 @@ public class GTreeFilterTask extends GTreeTask {
 			monitor.setMessage("Filtering...");
 			monitor.initialize(nodeCount);
 			GTreeNode filtered = root.filter(filter, monitor);
-			runOnSwingThread(() -> tree.swingSetFilteredRootNode(filtered));
+			runOnSwingThread(() -> tree.setFilteredRootNode(filtered));
 			if (filter.showFilterMatches()) {
 				expandInSameTask(monitor, filtered);
 				restoreInSameTask(monitor);

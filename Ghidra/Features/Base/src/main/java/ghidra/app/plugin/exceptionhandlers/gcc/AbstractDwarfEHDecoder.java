@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -305,7 +306,7 @@ abstract class AbstractDwarfEHDecoder implements DwarfEHDecoder {
 
 		long offset = decode(context);
 
-		return addrFactory.getAddress(ram.getSpaceID(), offset);
+		return addrFactory.getAddress(ram.getBaseSpaceID(), offset);
 	}
 
 	/**
@@ -369,7 +370,7 @@ abstract class AbstractDwarfEHDecoder implements DwarfEHDecoder {
 		}
 
 		if (isIndirect) {
-			Address toDeref = prog.getAddressFactory().getAddress(ram.getSpaceID(), val);
+			Address toDeref = prog.getAddressFactory().getAddress(ram.getBaseSpaceID(), val);
 			val = ptrval(prog, toDeref);
 		}
 

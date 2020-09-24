@@ -74,7 +74,7 @@ public class DemangledVariable extends DemangledObject {
 		String n = getDemangledName();
 		boolean hasName = !StringUtils.isBlank(n);
 
-		StringBuilder datatypeBuffer = new StringBuilder();
+		StringBuffer datatypeBuffer = new StringBuffer();
 		String spacer = EMPTY_STRING;
 		if (!(datatype instanceof DemangledFunctionPointer) &&
 			!(datatype instanceof DemangledFunctionReference) &&
@@ -160,6 +160,20 @@ public class DemangledVariable extends DemangledObject {
 		buffer.append(datatypeBuffer);
 
 		return buffer.toString();
+	}
+
+	@Override
+	public String getNamespaceName() {
+
+		String n = getDemangledName();
+		if (!StringUtils.isBlank(n)) {
+			return n;
+		}
+
+		if (datatype != null) {
+			return datatype.getSignature();
+		}
+		return "<no name>"; // shouldn't happen
 	}
 
 	@Override

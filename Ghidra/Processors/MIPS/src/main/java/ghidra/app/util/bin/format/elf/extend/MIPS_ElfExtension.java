@@ -580,11 +580,9 @@ public class MIPS_ElfExtension extends ElfExtension {
 						break;
 
 					default:
-						if (optionDataSize > 0) {
-							// consume unprocessed option description bytes
-							elfLoadHelper.createData(nextOptionAddr,
-								new ArrayDataType(ByteDataType.dataType, optionDataSize, 1));
-						}
+						// consume unprocessed option description bytes
+						elfLoadHelper.createData(nextOptionAddr,
+							new ArrayDataType(ByteDataType.dataType, optionDataSize, 1));
 				}
 
 				limit -= odkHeader.getLength() + optionDataSize;

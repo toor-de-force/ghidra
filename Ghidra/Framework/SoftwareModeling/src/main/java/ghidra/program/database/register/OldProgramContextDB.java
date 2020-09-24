@@ -32,7 +32,9 @@ import ghidra.program.model.listing.ProgramContext;
 import ghidra.program.util.RangeMapAdapter;
 import ghidra.program.util.RegisterValueStore;
 import ghidra.util.Lock;
+import ghidra.util.datastruct.LongObjectHashtable;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.VersionException;
 import ghidra.util.task.TaskMonitor;
 
 /**
@@ -49,15 +51,17 @@ public class OldProgramContextDB implements ProgramContext, DefaultProgramContex
 
 	private DBHandle dbHandle;
 	private ErrorHandler errHandler;
-	private Language language;
+	private Register[] registers;
 	private AddressMap addrMap;
+	private int registerSpaceSize;
 	private Lock lock;
 
 	/**
 	 * maintain values stored in registers for specified addresses and
 	 * address ranges using the PropertyMap utilities.
 	 */
-	private Map<Integer, AddressRangeMapDB> valueMaps;
+	private HashMap<String, Register> registersMap;
+	private LongObjectHashtable<AddressRangeMapDB> valueMaps;
 	private Register baseContextRegister;
 	protected Map<Register, RegisterValueStore> defaultRegisterValueMap;
 
@@ -80,12 +84,28 @@ public class OldProgramContextDB implements ProgramContext, DefaultProgramContex
 		this.errHandler = errHandler;
 		this.lock = lock;
 		this.addrMap = addrMap.getOldAddressMap();
-		this.language = language;
-
+		this.registers = language.getRegisters();
 		defaultRegisterValueMap = new HashMap<Register, RegisterValueStore>();
-		valueMaps = new HashMap<>();
 
-		baseContextRegister = language.getContextBaseRegister();
+		registersMap = new HashMap<String, Register>();
+		valueMaps = new LongObjectHashtable<AddressRangeMapDB>();
+		registerSpaceSize = 0;
+
+		for (Register register : registers) {
+			String registerName = register.getName();
+			registersMap.put(registerName.toUpperCase(), register);
+
+			int offset = (register.getOffset() & 0xffff);
+			if (offset + register.getMinimumByteSize() > registerSpaceSize) {
+				registerSpaceSize = offset + register.getMinimumByteSize();
+			}
+		}
+		for (Register register : registers) {
+			if (register.isProcessorContext()) {
+				baseContextRegister = register.getBaseRegister();
+				break;
+			}
+		}
 		if (baseContextRegister == null) {
 			baseContextRegister =
 				new Register("DEFAULT_CONTEXT", "DEFAULT_CONTEXT",
@@ -168,18 +188,28 @@ public class OldProgramContextDB implements ProgramContext, DefaultProgramContex
 	}
 
 	@Override
-	public List<Register> getContextRegisters() {
-		return language.getContextRegisters();
+	public Register[] getProcessorStateRegisters() {
+		List<Register> list = new ArrayList<Register>();
+		for (Register register : registers) {
+			if (register.isProcessorContext()) {
+				list.add(register);
+			}
+		}
+		return list.toArray(new Register[list.size()]);
 	}
 
 	@Override
 	public Register getRegister(String name) {
-		return language.getRegister(name);
+		return registersMap.get(name.toUpperCase());
 	}
 
 	@Override
-	public List<String> getRegisterNames() {
-		return language.getRegisterNames();
+	public String[] getRegisterNames() {
+		List<String> list = new ArrayList<String>();
+		for (Register register : registers) {
+			list.add(register.getName());
+		}
+		return list.toArray(new String[list.size()]);
 	}
 
 	@Override
@@ -245,8 +275,8 @@ public class OldProgramContextDB implements ProgramContext, DefaultProgramContex
 	}
 
 	@Override
-	public List<Register> getRegisters() {
-		return language.getRegisters();
+	public Register[] getRegisters() {
+		return registers;
 	}
 
 	public long getSigned(Address addr, Register reg) throws UnsupportedOperationException {
@@ -320,7 +350,7 @@ public class OldProgramContextDB implements ProgramContext, DefaultProgramContex
 	public void invalidateCache(boolean all) throws IOException {
 		lock.acquire();
 		try {
-			valueMaps.clear();
+			valueMaps.removeAll();
 		}
 		finally {
 			lock.release();
@@ -418,7 +448,7 @@ public class OldProgramContextDB implements ProgramContext, DefaultProgramContex
 	public Register[] getRegistersWithValues() {
 		if (registersWithValues == null) {
 			List<Register> tmp = new ArrayList<Register>();
-			for (Register register : getRegisters()) {
+			for (Register register : registers) {
 				AddressRangeIterator it = getRegisterValueAddressRanges(register);
 				if (it.hasNext()) {
 					tmp.add(register);

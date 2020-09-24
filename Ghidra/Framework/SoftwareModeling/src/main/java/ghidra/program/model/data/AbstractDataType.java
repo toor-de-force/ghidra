@@ -17,6 +17,7 @@ package ghidra.program.model.data;
 
 import java.net.URL;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.docking.settings.Settings;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.util.InvalidNameException;

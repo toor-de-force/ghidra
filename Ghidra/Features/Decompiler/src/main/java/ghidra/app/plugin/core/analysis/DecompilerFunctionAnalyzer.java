@@ -71,7 +71,7 @@ public class DecompilerFunctionAnalyzer extends AbstractAnalyzer {
 
 	@Override
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log) {
-		DecompilerParameterIdCmd cmd = new DecompilerParameterIdCmd(NAME, set,
+		DecompilerParameterIdCmd cmd = new DecompilerParameterIdCmd(set,
 			sourceTypeClearLevelOption, commitDataTypesOption, commitVoidReturnOption,
 			decompilerTimeoutSecondsOption);
 		cmd.applyTo(program, monitor);

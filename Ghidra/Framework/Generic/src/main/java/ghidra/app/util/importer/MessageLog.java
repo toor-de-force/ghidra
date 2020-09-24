@@ -15,41 +15,51 @@
  */
 package ghidra.app.util.importer;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
-
 import ghidra.util.Msg;
-import utilities.util.reflection.ReflectionUtilities;
+import ghidra.util.exception.AssertException;
 
 /**
  * A simple class to handle logging messages and exceptions.  A maximum message count size 
  * constraint can be set to clip messages after a certain number, but still keep incrementing
  * a running total.
- * 
- * <p>In addition to logging messages, clients can also set a status message.  This message may
- * later used as the primary error message when reporting to the user.
  */
 public class MessageLog {
 	/**
 	 * The default number of messages to store before clipping
 	 */
-	private final static int MAX_COUNT = 500;
+	public final static int MAX_COUNT = 500;
 
-	private List<String> messages = new ArrayList<>();
-	private int maxSize = MAX_COUNT;
+	private StringBuffer buffer = new StringBuffer();
+	private int maxSize;
 	private int count;
-	private String statusMsg = StringUtils.EMPTY;
+	private int pos = -1;
+	private String statusMsg;
+
+	/**
+	 * Constructs a new message log using the default message count
+	 */
+	public MessageLog() {
+		this(MAX_COUNT);
+	}
+
+	/**
+	 * Constructs a new message log using the specified message count
+	 * @param maxSize the maximum number of messages
+	 */
+	public MessageLog(int maxSize) {
+		this.maxSize = maxSize;
+		clearStatus();
+	}
 
 	/**
 	 * Copies the contents of one message log into this one
 	 * @param log the log to copy from
 	 */
 	public void copyFrom(MessageLog log) {
-		for (String otherMessage : log.messages) {
-			add(otherMessage);
-		}
+		this.buffer = new StringBuffer(log.buffer);
+		this.maxSize = log.maxSize;
+		this.count = log.count;
+		this.pos = log.pos;
 	}
 
 	/**
@@ -57,7 +67,7 @@ public class MessageLog {
 	 * @param message the message
 	 */
 	public void appendMsg(String message) {
-		add(message);
+		msg(message);
 	}
 
 	/**
@@ -68,10 +78,10 @@ public class MessageLog {
 	 */
 	public void appendMsg(String originator, String message) {
 		if (originator == null) {
-			add(message);
+			msg(message);
 		}
 		else {
-			add(originator + "> " + message);
+			msg(originator + "> " + message);
 		}
 	}
 
@@ -81,7 +91,7 @@ public class MessageLog {
 	 * @param message the message
 	 */
 	public void appendMsg(int lineNum, String message) {
-		add("Line #" + lineNum + " - " + message);
+		msg("Line #" + lineNum + " - " + message);
 	}
 
 	/**
@@ -89,39 +99,31 @@ public class MessageLog {
 	 * @param t the exception to append to the log
 	 */
 	public void appendException(Throwable t) {
-		String asString = ReflectionUtilities.stackTraceToString(t);
-		add(asString);
+		if (t instanceof NullPointerException || t instanceof AssertException) {
+			Msg.error(this, "Exception appended to MessageLog", t);
+		}
+		else {
+			Msg.debug(this, "Exception appended to MessageLog", t);
+		}
+		String msg = t.toString();
+		msg(msg);
 	}
 
 	/**
-	 * Readable method for appending error messages to the log.
-	 *
-	 * <p>Currently does nothing different than {@link #appendMsg(String, String)}.
-	 *
-	 *
-	 * @param originator the originator of the message 
-	 * @param message the message
-	 * @deprecated use {@link #appendMsg(String)}
+	 * Returns the message count
+	 * @return the message count
 	 */
-	@Deprecated
-	public void error(String originator, String message) {
-		appendMsg(originator, message);
-	}
-
-	/**
-	 * Returns true if this log has messages
-	 * @return true if this log has messages
-	 */
-	public boolean hasMessages() {
-		return count > 0;
+	public int getMsgCount() {
+		return count;
 	}
 
 	/**
 	 * Clears all messages from this log and resets the count
 	 */
 	public void clear() {
-		messages = new ArrayList<>();
+		buffer = new StringBuffer();
 		count = 0;
+		pos = -1;
 	}
 
 	/**
@@ -136,7 +138,7 @@ public class MessageLog {
 	 * Clear status message
 	 */
 	public void clearStatus() {
-		statusMsg = StringUtils.EMPTY;
+		statusMsg = "";
 	}
 
 	/**
@@ -149,41 +151,39 @@ public class MessageLog {
 
 	@Override
 	public String toString() {
-		return toStringWithWarning();
+		if (count > maxSize) {
+			if (pos > -1) {
+				buffer.delete(pos, buffer.length());
+			}
+			pos = buffer.length();
+			buffer.append("\n \n");
+			buffer.append("There were too many messages to display.\n");
+			buffer.append("" + (count - maxSize) + " messages have been truncated.");
+			buffer.append("\n \n");
+		}
+		return buffer.toString();
+	}
+
+	private void msg(String msg) {
+		if (msg == null || msg.length() == 0) {//discard if null...
+			return;
+		}
+		if (count++ < maxSize) {
+			buffer.append(msg);
+			buffer.append("\n");
+		}
 	}
 
 	/**
-	 * Writes this log's contents to the application log
-	 * @param owner the owning class whose name will appear in the log message
-	 * @param messageHeader the message header that will appear before the log messages
+	 * Readable method for appending error messages to the log.
+	 *
+	 * <p>Currently does nothing different than {@link #appendMsg(String, String)}.
+	 *
+	 *
+	 * @param originator the originator of the message 
+	 * @param message the message
 	 */
-	public void write(Class<?> owner, String messageHeader) {
-		String header = StringUtils.defaultIfBlank(messageHeader, "Log Messages");
-		Msg.info(owner, header + '\n' + toStringWithWarning());
-	}
-
-	private String toStringWithWarning() {
-		StringBuilder output = new StringBuilder();
-		if (count > maxSize) {
-			output.append('\n').append('\n');
-			output.append("There were too many messages to display.\n");
-			output.append((count - maxSize)).append(" messages have been truncated.");
-			output.append('\n').append('\n');
-		}
-
-		for (String s : messages) {
-			output.append(s).append('\n');
-		}
-		return output.toString();
-	}
-
-	private void add(String msg) {
-		if (StringUtils.isBlank(msg)) {
-			return;
-		}
-
-		if (count++ < maxSize) {
-			messages.add(msg);
-		}
+	public void error(String originator, String message) {
+		appendMsg(originator, message);
 	}
 }

@@ -383,8 +383,9 @@ public class ProgramDiffDetails {
 		l1 = p1.getListing();
 		l2 = p2.getListing();
 
+		Register[] descs1 = p1.getProgramContext().getRegisters();
 		maxRegisterName = "Register".length(); // default name length.
-		for (Register element : p1.getProgramContext().getRegisters()) {
+		for (Register element : descs1) {
 			maxRegisterName = Math.max(maxRegisterName, element.getName().length());
 		}
 	}
@@ -1284,8 +1285,13 @@ public class ProgramDiffDetails {
 	 * @throws ConcurrentModificationException if analysis is modifying the program context.
 	 */
 	private void addProgramContextDetails() throws ConcurrentModificationException {
-
-		if (!ProgramMemoryComparator.sameProgramContextRegisterNames(p1, p2)) {
+		ProgramContext pc1 = p1.getProgramContext();
+		ProgramContext pc2 = p2.getProgramContext();
+		String[] names1 = pc1.getRegisterNames();
+		String[] names2 = pc2.getRegisterNames();
+		Arrays.sort(names1);
+		Arrays.sort(names2);
+		if (!Arrays.equals(names1, names2)) {
 			addDiffHeader("Program Context");
 			addText(
 				indent1 + "Program Context Registers don't match between the programs." + newLine);
@@ -1293,9 +1299,8 @@ public class ProgramDiffDetails {
 		}
 
 		// Check all the register's values and output any differences.
-		ProgramContext pc1 = p1.getProgramContext();
-		ProgramContext pc2 = p2.getProgramContext();
-		for (Register reg1 : pc1.getRegisters()) {
+		Register[] descs1 = pc1.getRegisters();
+		for (Register reg1 : descs1) {
 			addRegisterDiffDetails(pc1, pc2, reg1);
 		}
 	}

@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,33 +16,36 @@
  */
 package ghidra.program.model.lang;
 
-import java.util.*;
-
 import ghidra.program.model.address.Address;
+
+import java.util.*;
 
 public class RegisterTranslator {
 	private static Comparator<Register> registerSizeComparator = new Comparator<Register>() {
-		@Override
 		public int compare(Register r1, Register r2) {
 			// Used for sorting largest to smallest
 			return r2.getBitLength() - r1.getBitLength();
 		}
 	};
 
-	private Language oldLang;
-	private Language newLang;
+	private Register[] oldRegs;
+	private Register[] newRegs;
 
 	private HashMap<Integer, List<Register>> oldRegisterMap;
 	private HashMap<Integer, List<Register>> newRegisterMap;
+	private HashMap<String, Register> oldRegisterNameMap;
+	private HashMap<String, Register> newRegisterNameMap;
 
 	public RegisterTranslator(Language oldLang, Language newLang) {
-		this.oldLang = oldLang;
-		this.newLang = newLang;
-		this.oldRegisterMap = buildOffsetMap(oldLang.getRegisters());
-		this.newRegisterMap = buildOffsetMap(newLang.getRegisters());
+		oldRegs = oldLang.getRegisters();
+		newRegs = newLang.getRegisters();
+		this.oldRegisterMap = buildOffsetMap(oldRegs);
+		this.newRegisterMap = buildOffsetMap(newRegs);
+		oldRegisterNameMap = buildNameMap(oldRegs);
+		newRegisterNameMap = buildNameMap(newRegs);
 	}
 
-	private HashMap<Integer, List<Register>> buildOffsetMap(List<Register> registers) {
+	private HashMap<Integer, List<Register>> buildOffsetMap(Register[] registers) {
 		HashMap<Integer, List<Register>> offsetMap = new HashMap<Integer, List<Register>>();
 		for (Register register : registers) {
 			Address addr = register.getAddress();
@@ -63,6 +67,14 @@ public class RegisterTranslator {
 			Collections.sort(registerList, registerSizeComparator);
 		}
 		return offsetMap;
+	}
+
+	private HashMap<String, Register> buildNameMap(Register[] regs) {
+		HashMap<String, Register> map = new HashMap<String, Register>();
+		for (Register r : regs) {
+			map.put(r.getName().toUpperCase(), r);
+		}
+		return map;
 	}
 
 	public Register getOldRegister(int offset, int size) {
@@ -98,15 +110,15 @@ public class RegisterTranslator {
 	}
 
 	public Register getNewRegister(Register oldReg) {
-		return newLang.getRegister(oldReg.getName());
+		return newRegisterNameMap.get(oldReg.getName().toUpperCase());
 	}
 
 	public Register getOldRegister(Register newReg) {
-		return oldLang.getRegister(newReg.getName());
+		return oldRegisterNameMap.get(newReg.getName().toUpperCase());
 	}
 
-	public List<Register> getNewRegisters() {
-		return newLang.getRegisters();
+	public Register[] getNewRegisters() {
+		return newRegs;
 	}
 
 }

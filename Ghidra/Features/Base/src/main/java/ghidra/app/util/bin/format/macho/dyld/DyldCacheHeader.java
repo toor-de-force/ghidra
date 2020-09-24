@@ -378,9 +378,6 @@ public class DyldCacheHeader implements StructConverter {
 	}
 
 	private void parseImageInfo(MessageLog log, TaskMonitor monitor) throws CancelledException {
-		if (imagesOffset == 0) {
-			return;
-		}
 		monitor.setMessage("Parsing DYLD image info...");
 		monitor.initialize(imagesCount);
 		try {
@@ -398,9 +395,6 @@ public class DyldCacheHeader implements StructConverter {
 	}
 
 	private void parseSlideInfo(MessageLog log, TaskMonitor monitor) throws CancelledException {
-		if (slideInfoOffset == 0) {
-			return;
-		}
 		monitor.setMessage("Parsing DYLD slide info...");
 		monitor.initialize(1);
 		try {
@@ -430,9 +424,6 @@ public class DyldCacheHeader implements StructConverter {
 
 	private void parseLocalSymbolsInfo(MessageLog log, TaskMonitor monitor)
 			throws CancelledException {
-		if (localSymbolsOffset == 0) {
-			return;
-		}
 		monitor.setMessage("Parsing DYLD local symbols info...");
 		monitor.initialize(1);
 		try {
@@ -448,9 +439,6 @@ public class DyldCacheHeader implements StructConverter {
 	}
 
 	private void parseBranchPools(MessageLog log, TaskMonitor monitor) throws CancelledException {
-		if (branchPoolsOffset == 0) {
-			return;
-		}
 		monitor.setMessage("Parsing DYLD branch pool addresses...");
 		monitor.initialize(branchPoolsCount);
 		try {
@@ -467,9 +455,6 @@ public class DyldCacheHeader implements StructConverter {
 	}
 
 	private void parseImageTextInfo(MessageLog log, TaskMonitor monitor) throws CancelledException {
-		if (imagesTextOffset == 0) {
-			return;
-		}
 		monitor.setMessage("Parsing DYLD image text info...");
 		monitor.initialize(imagesTextCount);
 		try {
@@ -488,9 +473,6 @@ public class DyldCacheHeader implements StructConverter {
 
 	private void parseAcceleratorInfo(Program program, AddressSpace space, MessageLog log,
 			TaskMonitor monitor) throws CancelledException {
-		if (accelerateInfoAddr == 0) {
-			return;
-		}
 		monitor.setMessage("Parsing DYLD accelerateor info...");
 		monitor.initialize(imagesTextCount);
 		try {
@@ -623,7 +605,7 @@ public class DyldCacheHeader implements StructConverter {
 		monitor.initialize(branchPoolList.size());
 		try {
 			Address addr = fileOffsetToAddr(branchPoolsOffset, program, space);
-			for (Long element : branchPoolList) {
+			for (int i = 0; i < branchPoolList.size(); i++) {
 				Data d = DataUtilities.createData(program, addr, Pointer64DataType.dataType,
 					Pointer64DataType.dataType.getLength(), false,
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);

@@ -15,7 +15,6 @@
  */
 package docking.action.builder;
 
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -24,7 +23,6 @@ import javax.swing.KeyStroke;
 
 import docking.*;
 import docking.action.*;
-import docking.actions.KeyBindingUtils;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
 import resources.ResourceManager;
@@ -52,7 +50,7 @@ import resources.ResourceManager;
  * the {@link #withContext(Class)} call.
  */
 public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends ActionContext, B extends AbstractActionBuilder<T, C, B>> {
-	private final Predicate<C> ALWAYS_TRUE = e -> true;
+
 	/**
 	 * Name for the {@code DockingAction}
 	 */
@@ -117,6 +115,7 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	 * The mnemonic for the menu action (optional)
 	 */
 	private int menuMnemonic = MenuData.NO_MNEMONIC;
+
 	/**
 	 * The icon for the  menu item (optional)
 	 */
@@ -160,22 +159,17 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	/**
 	 * Predicate for determining if an action is enabled for a given context
 	 */
-	private Predicate<C> enabledPredicate = ALWAYS_TRUE;
+	private Predicate<C> enabledPredicate;
 
 	/**
 	 * Predicate for determining if an action should be included on the pop-up menu
 	 */
-	private Predicate<C> popupPredicate = ALWAYS_TRUE;
+	private Predicate<C> popupPredicate;
 
 	/**
 	 * Predicate for determining if an action is applicable for a given context
 	 */
-	private Predicate<C> validContextPredicate = ALWAYS_TRUE;
-
-	/**
-	 * Set to true if the action supports using the default tool context if the local context is invalid
-	 */
-	private boolean supportsDefaultToolContext;
+	private Predicate<C> validContextPredicate;
 
 	/**
 	 * Builder constructor
@@ -490,7 +484,7 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	 * @return this builder (for chaining)
 	 */
 	public B keyBinding(String keyStrokeString) {
-		this.keyBinding = KeyBindingUtils.parseKeyStroke(keyStrokeString);
+		this.keyBinding = KeyStroke.getKeyStroke(keyStrokeString);
 		if (keyBinding == null && keyStrokeString != null) {
 			Msg.warn(this, "Can't parse KeyStroke: " + keyStrokeString);
 		}
@@ -523,7 +517,7 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	 * @return this builder (for chaining)
 	 */
 	public B enabledWhen(Predicate<C> predicate) {
-		enabledPredicate = Objects.requireNonNull(predicate);
+		enabledPredicate = predicate;
 		return self();
 	}
 
@@ -546,7 +540,7 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	 * @see #popupMenuPath(String...)
 	 */
 	public B popupWhen(Predicate<C> predicate) {
-		popupPredicate = Objects.requireNonNull(predicate);
+		popupPredicate = predicate;
 		return self();
 	}
 
@@ -562,23 +556,7 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	 * @return this builder (for chaining)
 	 */
 	public B validContextWhen(Predicate<C> predicate) {
-		validContextPredicate = Objects.requireNonNull(predicate);
-		return self();
-	}
-
-	/**
-	 * Sets whether the action will support using the default tool context if the focused provider's
-	 * context is invalid.
-	 * <P>
-	 * By default, actions only work on the current focused provider's context.  Setting this
-	 * to true will cause the action to be evaluated against the default tool context if the
-	 * focused context is not valid for this action.
-	 * 
-	 * @param b the new value
-	 * @return this builder (for chaining)
-	 */
-	public B supportsDefaultToolContext(boolean b) {
-		supportsDefaultToolContext = b;
+		validContextPredicate = predicate;
 		return self();
 	}
 
@@ -625,10 +603,6 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	public <AC2 extends ActionContext, B2 extends AbstractActionBuilder<T, AC2, B2>> B2 withContext(
 			Class<AC2> newActionContextClass) {
 
-		if (actionContextClass != ActionContext.class) {
-			throw new IllegalStateException("Can't set the ActionContext type more than once");
-		}
-
 		// To make this work, we need to return a builder whose ActionContext is AC2 and not AC
 		//    (which is what this builder is now)
 		//
@@ -653,7 +627,6 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 	protected void decorateAction(DockingAction action) {
 		action.setEnabled(isEnabled);
 		action.setDescription(description);
-		action.setSupportsDefaultToolContext(supportsDefaultToolContext);
 
 		setMenuData(action);
 		setToolbarData(action);
@@ -664,9 +637,15 @@ public abstract class AbstractActionBuilder<T extends DockingActionIf, C extends
 			action.setHelpLocation(helpLocation);
 		}
 
-		action.enabledWhen(adaptPredicate(enabledPredicate));
-		action.validContextWhen(adaptPredicate(validContextPredicate));
-		action.popupWhen(adaptPredicate(popupPredicate));
+		if (enabledPredicate != null) {
+			action.enabledWhen(adaptPredicate(enabledPredicate));
+		}
+		if (validContextPredicate != null) {
+			action.validContextWhen(adaptPredicate(validContextPredicate));
+		}
+		if (popupPredicate != null) {
+			action.popupWhen(adaptPredicate(popupPredicate));
+		}
 	}
 
 	/**

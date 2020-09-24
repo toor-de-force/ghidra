@@ -41,6 +41,7 @@ public abstract class ConstantPool {
 		public long value;			// Primitive value of the object (if tag == PRIMITIVE)
 		public byte[] byteData;
 		public DataType type;
+		public boolean hasThisPtr = false;
 		public boolean isConstructor = false;
 
 		public StringBuilder build(long ref, PcodeDataTypeManager dtmanage) {
@@ -70,6 +71,9 @@ public abstract class ConstantPool {
 			}
 			else {
 				SpecXmlUtils.encodeStringAttribute(buf, "tag", "primitive");
+			}
+			if (hasThisPtr) {
+				SpecXmlUtils.encodeBooleanAttribute(buf, "hasthis", true);
 			}
 			if (isConstructor) {
 				SpecXmlUtils.encodeBooleanAttribute(buf, "constructor", true);

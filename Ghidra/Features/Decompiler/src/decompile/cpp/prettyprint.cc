@@ -344,12 +344,6 @@ void EmitXml::spaces(int4 num,int4 bump)
   }
 }
 
-void EmitXml::resetDefaults(void)
-
-{
-  resetDefaultsInternal();
-}
-
 int4 TokenSplit::countbase = 0;
 
 /// Emit markup or content corresponding to \b this token on a low-level emitter.
@@ -542,15 +536,15 @@ void TokenSplit::printDebug(ostream &s) const
 }
 #endif
 
-EmitPrettyPrint::EmitPrettyPrint(void)
-  : EmitXml(), scanqueue( 3*100 ), tokqueue( 3*100 )
+EmitPrettyPrint::EmitPrettyPrint(int4 mls) 
+  : EmitXml(), scanqueue( 3*mls ), tokqueue( 3*mls )
 
 {
   lowlevel = new EmitNoXml();	// Do not emit xml by default
+  maxlinesize = mls;
   spaceremain = maxlinesize;
   needbreak = false;
   commentmode = false;
-  resetDefaultsPrettyPrint();
 }
 
 EmitPrettyPrint::~EmitPrettyPrint(void)
@@ -1218,12 +1212,4 @@ void EmitPrettyPrint::setMaxLineSize(int4 val)
   tokqueue.setMax(3*val);
   spaceremain = maxlinesize;
   clear();
-}
-
-void EmitPrettyPrint::resetDefaults(void)
-
-{
-  lowlevel->resetDefaults();
-  resetDefaultsInternal();
-  resetDefaultsPrettyPrint();
 }

@@ -24,9 +24,9 @@ import docking.action.MenuData;
 import docking.action.ToolBarData;
 import docking.widgets.OptionDialog;
 import ghidra.framework.client.*;
-import ghidra.framework.main.datatable.ProjectTreeAction;
+import ghidra.framework.main.datatable.ProjectDataTreeContextAction;
 import ghidra.framework.main.datatree.FindCheckoutsDialog;
-import ghidra.framework.main.datatree.FrontEndProjectTreeContext;
+import ghidra.framework.main.datatree.ProjectDataTreeActionContext;
 import ghidra.framework.model.DomainFolder;
 import ghidra.framework.model.ProjectData;
 import ghidra.framework.plugintool.Plugin;
@@ -34,7 +34,7 @@ import ghidra.util.HelpLocation;
 import resources.MultiIcon;
 import resources.ResourceManager;
 
-public class FindCheckoutsAction extends ProjectTreeAction {
+public class FindCheckoutsAction extends ProjectDataTreeContextAction {
 
 	private Plugin plugin;
 
@@ -54,7 +54,7 @@ public class FindCheckoutsAction extends ProjectTreeAction {
 	}
 
 	@Override
-	protected void actionPerformed(FrontEndProjectTreeContext context) {
+	protected void actionPerformed(ProjectDataTreeActionContext context) {
 		DomainFolder domainFolder = context.getSelectedFolders().get(0);
 		ProjectData projectData = domainFolder.getProjectData();
 		RepositoryAdapter repository = projectData.getRepository();
@@ -77,11 +77,11 @@ public class FindCheckoutsAction extends ProjectTreeAction {
 				return;
 			}
 		}
-		findCheckouts(domainFolder, context.getTree());
+		findCheckouts(domainFolder, context.getComponent());
 	}
 
 	@Override
-	protected boolean isEnabledForContext(FrontEndProjectTreeContext context) {
+	protected boolean isEnabledForContext(ProjectDataTreeActionContext context) {
 		if (context.isReadOnlyProject()) {
 			return false;
 		}

@@ -479,7 +479,7 @@ public class AssociationDatabaseManager implements VTAssociationManager {
 
 		if (status == ACCEPTED) {
 			associationDB.setStatus(AVAILABLE);
-			associationDB.setInvalid();
+			associationCache.invalidate(associationDB.getKey());
 			unblockRelatedAssociations(associationDB);
 			for (AssociationHook hook : associationHooks) {
 				hook.associationCleared(associationDB);
@@ -545,7 +545,7 @@ public class AssociationDatabaseManager implements VTAssociationManager {
 				case AVAILABLE:
 					throw new AssertException("Attempted to unblock a non-blocked association!");
 				case BLOCKED:
-					relatedAssociation.setInvalid();
+					associationCache.invalidate(relatedAssociation.getKey());
 					relatedAssociation.setStatus(computeBlockedStatus(relatedAssociation));
 					break;
 				case REJECTED:

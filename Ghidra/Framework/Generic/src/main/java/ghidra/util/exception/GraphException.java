@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +22,17 @@ package ghidra.util.exception;
 public class GraphException extends UsrException {
 
 	/**
-	 * Default constructor
-	 */
-	public GraphException() {
-		super("Graph Error.");
-	}
+     * Default constructor
+     */
+    public GraphException() {
+        super("Graph Error.");
+    }
 
-	/**
-	 * Constructor
-	 * @param message detailed message
-	 */
-	public GraphException(String message) {
-		super(message);
-	}
-
-	public GraphException(String title, Throwable cause) {
-		super(title, cause);
-	}
+    /**
+     * Constructor
+     * @param message detailed message
+     */
+    public GraphException(String message) {
+        super(message);
+    }
 }

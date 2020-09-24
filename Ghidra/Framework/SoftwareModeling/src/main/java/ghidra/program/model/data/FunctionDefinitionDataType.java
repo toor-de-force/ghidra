@@ -17,6 +17,7 @@ package ghidra.program.model.data;
 
 import java.util.ArrayList;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.docking.settings.Settings;
 import ghidra.program.database.data.DataTypeUtilities;
 import ghidra.program.model.lang.PrototypeModel;
@@ -303,10 +304,10 @@ public class FunctionDefinitionDataType extends GenericDataType implements Funct
 		if (dt == this) {
 			return true;
 		}
-		if (!(dt instanceof FunctionDefinition)) {
+		if (!(dt instanceof FunctionSignature)) {
 			return false;
 		}
-		return isEquivalentSignature((FunctionDefinition) dt);
+		return isEquivalentSignature((FunctionSignature) dt);
 	}
 
 	@Override
@@ -406,11 +407,6 @@ public class FunctionDefinitionDataType extends GenericDataType implements Funct
 	@Override
 	public boolean dependsOn(DataType dt) {
 		return false;
-	}
-
-	@Override
-	public String toString() {
-		return getPrototypeString(true);
 	}
 
 }

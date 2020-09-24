@@ -19,26 +19,20 @@ import ghidra.app.plugin.processors.sleigh.SleighLanguage;
 import ghidra.javaclass.format.constantpool.AbstractConstantPoolInfoJava;
 import ghidra.program.model.lang.InjectContext;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.pcode.PcodeOp;
 
 public class InjectInvokeVirtual extends InjectPayloadJava {
 
-	public InjectInvokeVirtual(String sourceName, SleighLanguage language, long uniqBase) {
-		super(sourceName, language, uniqBase);
+	public InjectInvokeVirtual(String sourceName, SleighLanguage language) {
+		super(sourceName, language);
 	}
 
 	@Override
-	public String getName() {
-		return PcodeInjectLibraryJava.INVOKE_VIRTUAL;
-	}
-
-	@Override
-	public PcodeOp[] getPcode(Program program, InjectContext con) {
+	public String getPcodeText(Program program, String context) {
+		InjectContext injectContext = getInjectContext(program, context);
 		AbstractConstantPoolInfoJava[] constantPool = getConstantPool(program);
-		int constantPoolIndex = (int) con.inputlist.get(0).getOffset();
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, con.baseAddr, uniqueBase);
-		InvokeMethods.getPcodeForInvoke(pCode, constantPoolIndex, constantPool,
-			JavaInvocationType.INVOKE_VIRTUAL);
-		return pCode.getPcodeOps();
+		int constantPoolIndex = (int) injectContext.inputlist.get(0).getOffset();
+		String pcodeText = InvokeMethods.getPcodeForInvoke(constantPoolIndex, constantPool, JavaInvocationType.INVOKE_VIRTUAL);
+		return pcodeText;
 	}
+
 }

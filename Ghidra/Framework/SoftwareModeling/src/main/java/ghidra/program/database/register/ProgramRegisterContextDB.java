@@ -17,7 +17,8 @@ package ghidra.program.database.register;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
 
 import db.*;
 import db.util.ErrorHandler;
@@ -48,7 +49,8 @@ public class ProgramRegisterContextDB extends AbstractStoredProgramContext imple
 	public ProgramRegisterContextDB(DBHandle dbHandle, ErrorHandler errHandler, Language lang,
 			CompilerSpec compilerSpec, AddressMap addrMap, Lock lock, int openMode,
 			CodeManager codeMgr, TaskMonitor monitor) throws VersionException, CancelledException {
-		super(lang);
+
+		super(lang.getRegisters());
 		this.addrMap = addrMap;
 		this.dbHandle = dbHandle;
 		this.errorHandler = errHandler;
@@ -66,7 +68,7 @@ public class ProgramRegisterContextDB extends AbstractStoredProgramContext imple
 		initializedCurrentValues();
 
 		if (upgrade) {
-			upgrade(addrMap, monitor);
+			upgrade(addrMap, lang, monitor);
 		}
 
 		if (openMode == DBConstants.UPGRADE && oldContextDataExists) {
@@ -88,13 +90,13 @@ public class ProgramRegisterContextDB extends AbstractStoredProgramContext imple
 		return false;
 	}
 
-	private void upgrade(AddressMap addressMapExt, TaskMonitor monitor)
+	private void upgrade(AddressMap addressMapExt, Language language, TaskMonitor monitor)
 			throws CancelledException {
 
 		OldProgramContextDB oldContext =
 			new OldProgramContextDB(dbHandle, errorHandler, language, addressMapExt, lock);
 
-		for (Register register : language.getRegisters()) {
+		for (Register register : registers) {
 			if (register.getBaseRegister() != register) {
 				continue;
 			}
@@ -304,16 +306,16 @@ public class ProgramRegisterContextDB extends AbstractStoredProgramContext imple
 			AddressSetView programMemory, TaskMonitor monitor) throws CancelledException {
 
 		if (translator == null) {
-			// Language instance unchanged
+			Language lang = program.getLanguage();
 			boolean clearContext = Boolean.valueOf(
-				language.getProperty(GhidraLanguagePropertyKeys.RESET_CONTEXT_ON_UPGRADE));
+				lang.getProperty(GhidraLanguagePropertyKeys.RESET_CONTEXT_ON_UPGRADE));
 			if (clearContext) {
 				RegisterValueStore store = registerValueMap.get(baseContextRegister);
 				if (store != null) {
 					store.clearAll();
 				}
 			}
-			initializeDefaultValues(language, newCompilerSpec);
+			initializeDefaultValues(lang, newCompilerSpec);
 			return;
 		}
 
@@ -322,8 +324,7 @@ public class ProgramRegisterContextDB extends AbstractStoredProgramContext imple
 		// Sort the registers by size so that largest come first.
 		// This prevents the remove call below from incorrectly clearing 
 		// smaller registers that are part of a larger register.
-		List<Register> registers = new ArrayList<Register>(language.getRegisters());
-		Collections.sort(registers, (r1, r2) -> r2.getBitLength() - r1.getBitLength());
+		Arrays.sort(registers, (r1, r2) -> r2.getBitLength() - r1.getBitLength());
 
 		// Map all register stores to new registers
 		for (Register register : registers) {
@@ -349,9 +350,11 @@ public class ProgramRegisterContextDB extends AbstractStoredProgramContext imple
 			registerValueMap.remove(register);
 		}
 
-		init(newLanguage);
-
 		initializeDefaultValues(newLanguage, newCompilerSpec);
+
+		registers = newLanguage.getRegisters();
+		baseContextRegister = newLanguage.getContextBaseRegister();
+		initNameMap();
 
 		registerValueMap.clear();
 		initializedCurrentValues();

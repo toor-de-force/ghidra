@@ -261,7 +261,7 @@ public class DataTypeDependencyOrderer {
 			}
 			else if (dataType instanceof Structure) {
 				Structure struct = (Structure) dataType;
-				DataTypeComponent dtcomps[] = struct.getDefinedComponents();
+				DataTypeComponent dtcomps[] = struct.getComponents();
 				for (DataTypeComponent dtcomp : dtcomps) {
 					addDependent(entry, dtcomp.getDataType());
 				}

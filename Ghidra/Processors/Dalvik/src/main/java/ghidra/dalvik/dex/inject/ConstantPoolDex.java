@@ -121,8 +121,7 @@ public class ConstantPoolDex extends ConstantPool {
 		String defName = res.token + '_' + Integer.toHexString(methodID);
 		FunctionDefinitionDataType funcDef = new FunctionDefinitionDataType(defName, dtManager);
 		res.type = new PointerDataType(funcDef);
-		funcDef.setGenericCallingConvention(
-			isStatic ? GenericCallingConvention.stdcall : GenericCallingConvention.thiscall);
+		res.hasThisPtr = !isStatic;
 
 		int prototypeIndex = methodIDItem.getProtoIndex() & 0xffff;
 		PrototypesIDItem prototype = dexHeader.getPrototypes().get(prototypeIndex);

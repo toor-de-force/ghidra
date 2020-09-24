@@ -45,7 +45,7 @@ public class MemoryMapPluginScreenShots extends GhidraScreenShotGenerator {
 		moveProviderToItsOwnWindow(provider);
 		JComponent component = getDockableComponent(provider);
 
-		captureIsolatedComponent(component, 800, 225);
+		captureIsolatedComponent(component, 650, 225);
 	}
 
 @Test

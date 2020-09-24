@@ -19,26 +19,21 @@ import ghidra.app.plugin.processors.sleigh.SleighLanguage;
 import ghidra.javaclass.format.constantpool.AbstractConstantPoolInfoJava;
 import ghidra.program.model.lang.InjectContext;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.pcode.PcodeOp;
 
 public class InjectMultiANewArray extends InjectPayloadJava {
 
-	public InjectMultiANewArray(String sourceName, SleighLanguage language, long uniqBase) {
-		super(sourceName, language, uniqBase);
+	public InjectMultiANewArray(String sourceName, SleighLanguage language) {
+		super(sourceName, language);
 	}
 
 	@Override
-	public String getName() {
-		return PcodeInjectLibraryJava.MULTIANEWARRAY;
-	}
-
-	@Override
-	public PcodeOp[] getPcode(Program program, InjectContext con) {
+	public String getPcodeText(Program program, String context) {
+		InjectContext injectContext = getInjectContext(program, context);
 		AbstractConstantPoolInfoJava[] constantPool = getConstantPool(program);
-		int constantPoolIndex = (int) con.inputlist.get(0).getOffset();
-		int dimensions = (int) con.inputlist.get(1).getOffset();
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, con.baseAddr, uniqueBase);
-		ArrayMethods.getPcodeForMultiANewArray(pCode, constantPoolIndex, constantPool, dimensions);
-		return pCode.getPcodeOps();
+		int constantPoolIndex = (int) injectContext.inputlist.get(0).getOffset();
+		int dimensions = (int) injectContext.inputlist.get(1).getOffset();
+		String pcodeText = ArrayMethods.getPcodeForMultiANewArray(constantPoolIndex, constantPool, dimensions);
+		return pcodeText;
 	}
+
 }

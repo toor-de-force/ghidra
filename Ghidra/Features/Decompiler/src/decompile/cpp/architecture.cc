@@ -16,7 +16,6 @@
 // Set up decompiler for specific architectures
 
 #include "coreaction.hh"
-#include "flow.hh"
 #ifdef CPUI_RULECOMPILE
 #include "rulecompile.hh"
 #endif
@@ -87,10 +86,16 @@ Architecture::Architecture(void)
 
 {
   //  endian = -1;
-  resetDefaultsInternal();
+  trim_recurse_max = 5;		// Reasonable default value
+  max_implied_ref = 2;		// 2 is best, in specific cases a higher number might be good
+  max_term_duplication = 2;	// 2 and 3 (4) are pretty reasonable
+  max_basetype_size = 10;	// Needs to be 8 or bigger
   min_funcsymbol_size = 1;
   aggressive_ext_trim = false;
+  readonlypropagate = false;
+  infer_pointers = true;
   funcptr_align = 0;
+  flowoptions = 0;
   defaultfp = (ProtoModel *)0;
   defaultReturnAddr.space = (AddrSpace *)0;
   evalfp_current = (ProtoModel *)0;
@@ -100,7 +105,6 @@ Architecture::Architecture(void)
   loader = (LoadImage *)0;
   pcodeinjectlib = (PcodeInjectLibrary *)0;
   commentdb = (CommentDatabase *)0;
-  stringManager = (StringManager *)0;
   cpool = (ConstantPool *)0;
   symboltab = new Database(this);
   context = (ContextDatabase *)0;
@@ -153,8 +157,6 @@ Architecture::~Architecture(void)
     delete pcodeinjectlib;
   if (commentdb != (CommentDatabase *)0)
     delete commentdb;
-  if (stringManager != (StringManager *)0)
-    delete stringManager;
   if (cpool != (ConstantPool *)0)
     delete cpool;
   if (context != (ContextDatabase *)0)
@@ -271,23 +273,20 @@ void Architecture::clearAnalysis(Funcdata *fd)
   fd->clear();			// Clear stuff internal to function
   // Clear out any analysis generated comments
   commentdb->clearType(fd->getAddress(),Comment::warning|Comment::warningheader);
-  stringManager->clear();
 }
 
 /// Symbols do not necessarily need to be available for the decompiler.
 /// This routine loads all the \e load \e image knows about into the symbol table
-/// \param delim is the delimiter separating namespaces from symbol base names
-void Architecture::readLoaderSymbols(const string &delim)
+void Architecture::readLoaderSymbols(void)
 
 {
   if (loadersymbols_parsed) return; // already read
+  Scope *scope = symboltab->getGlobalScope();
   loader->openSymbols();
   loadersymbols_parsed = true;
   LoadImageFunc record;
   while(loader->getNextSymbol(record)) {
-    string basename;
-    Scope *scope = symboltab->findCreateScopeFromSymbolName(record.name, delim, basename, (Scope *)0);
-    scope->addFunction(record.address,basename);
+    scope->addFunction(record.address,record.name);
   }
   loader->closeSymbols();
 }
@@ -326,13 +325,9 @@ SegmentOp *Architecture::getSegmentOp(AddrSpace *spc) const
 void Architecture::setPrototype(const PrototypePieces &pieces)
 
 {
-  string basename;
-  Scope *scope = symboltab->resolveScopeFromSymbolName(pieces.name, "::", basename, (Scope *)0);
-  if (scope == (Scope *)0)
-    throw ParseError("Unknown namespace: " + pieces.name);
-  Funcdata *fd = scope->queryFunction( basename );
+  Funcdata *fd = symboltab->getGlobalScope()->queryFunction( pieces.name );
   if (fd == (Funcdata *)0)
-    throw ParseError("Unknown function name: " + pieces.name);
+    throw ParseError("Unknown function name: "+pieces.name);
 
   fd->getFuncProto().setPieces(pieces);
 }
@@ -415,7 +410,6 @@ void Architecture::saveXml(ostream &s) const
   symboltab->saveXml(s);
   context->saveXml(s);
   commentdb->saveXml(s);
-  stringManager->saveXml(s);
   if (!cpool->empty())
     cpool->saveXml(s);
   s << "</save_state>\n";
@@ -448,8 +442,6 @@ void Architecture::restoreXml(DocumentStorage &store)
       context->restoreXml(subel,this);
     else if (subel->getName() == "commentdb")
       commentdb->restoreXml(subel,this);
-    else if (subel->getName() == "stringmanage")
-      stringManager->restoreXml(subel,this);
     else if (subel->getName() == "constantpool")
       cpool->restoreXml(subel,*types);
     else if (subel->getName() == "optionslist")
@@ -515,8 +507,8 @@ void Architecture::buildAction(DocumentStorage &store)
 
 {
   parseExtraRules(store);	// Look for any additional rules
-  allacts.universalAction(this);
-  allacts.resetDefaults();
+  universal_action(this);
+  allacts.setCurrent("decompile");
 }
 
 /// This builds the database which holds the status registers setings and other
@@ -586,14 +578,6 @@ void Architecture::buildCommentDB(DocumentStorage &store)
 
 {
   commentdb = new CommentDatabaseInternal();
-}
-
-/// Build container that holds decoded strings
-/// \param store may hold configuration information
-void Architecture::buildStringManager(DocumentStorage &store)
-
-{
-  stringManager = new StringManagerUnicode(this,2048);
 }
 
 /// Some processor models (Java byte-code) need a database of constants.
@@ -984,20 +968,6 @@ void Architecture::parseDeadcodeDelay(const Element *el)
     throw LowlevelError("Bad <deadcodedelay> tag");
 }
 
-/// Alter the range of addresses for which a pointer is allowed to be inferred.
-void Architecture::parseInferPtrBounds(const Element *el)
-
-{
-  const List &list(el->getChildren());
-  List::const_iterator iter;
-  for(iter=list.begin();iter!=list.end();++iter) {
-    const Element *subel = *iter;
-    Range range;
-    range.restoreXml(subel,this);
-    setInferPtrBounds(range);
-  }
-}
-
 /// Pull information from a \<funcptr> tag. Turn on alignment analysis of
 /// function pointers, some architectures have aligned function pointers
 /// and encode extra information in the unused bits.
@@ -1123,9 +1093,6 @@ void Architecture::parseProcessorConfig(DocumentStorage &store)
         throw LowlevelError("Undefined space: "+spaceName);
       setDefaultDataSpace(spc->getIndex());
     }
-    else if (elname == "inferptrbounds") {
-      parseInferPtrBounds(*iter);
-    }
     else if (elname == "segmented_address") {
     }
     else if (elname == "default_symbols") {
@@ -1200,8 +1167,6 @@ void Architecture::parseCompilerConfig(DocumentStorage &store)
       parseFuncPtrAlign(*iter);
     else if (elname == "deadcodedelay")
       parseDeadcodeDelay(*iter);
-    else if (elname == "inferptrbounds")
-      parseInferPtrBounds(*iter);
   }
   // <global> tags instantiate the base symbol table
   // They need to know about all spaces, so it must come
@@ -1277,7 +1242,6 @@ void Architecture::init(DocumentStorage &store)
   buildContext(store);
   buildTypegrp(store);
   buildCommentDB(store);
-  buildStringManager(store);
   buildConstantPool(store);
 
   restoreFromSpec(store);
@@ -1286,31 +1250,6 @@ void Architecture::init(DocumentStorage &store)
 
   buildInstructions(store); // Must be called after translate is built
   fillinReadOnlyFromLoader();
-}
-
-void Architecture::resetDefaultsInternal(void)
-
-{
-  trim_recurse_max = 5;
-  max_implied_ref = 2;		// 2 is best, in specific cases a higher number might be good
-  max_term_duplication = 2;	// 2 and 3 (4) are reasonable
-  max_basetype_size = 10;	// Needs to be 8 or bigger
-  flowoptions = FlowInfo::error_toomanyinstructions;
-  max_instructions = 100000;
-  infer_pointers = true;
-  readonlypropagate = false;
-  alias_block_level = 2;	// Block structs and arrays by default
-}
-
-/// Reset options that can be modified by the OptionDatabase. This includes
-/// options specific to this class and options under PrintLanguage and ActionDatabase
-void Architecture::resetDefaults(void)
-
-{
-  resetDefaultsInternal();
-  allacts.resetDefaults();
-  for(int4 i=0;i<printlist.size();++i)
-    printlist[i]->resetDefaults();
 }
 
 Address SegmentedResolver::resolve(uintb val,int4 sz,const Address &point,uintb &fullEncoding)

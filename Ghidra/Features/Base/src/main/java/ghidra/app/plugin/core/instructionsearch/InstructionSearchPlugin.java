@@ -245,10 +245,9 @@ public class InstructionSearchPlugin extends ProgramPlugin {
 			}
 
 			@Override
-			protected boolean isEnabledForContext(NavigatableActionContext context) {
+			protected boolean isValidNavigationContext(NavigatableActionContext context) {
 				return !(context instanceof RestrictedAddressSetContext);
 			}
-
 		};
 		searchAction.setHelpLocation(new HelpLocation("Search", "Instruction_Pattern_Search"));
 		searchAction.setMenuBarData(

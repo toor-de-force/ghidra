@@ -37,7 +37,7 @@ public class ProjectDataCutAction extends ProjectDataCopyCutBaseAction {
 	}
 
 	@Override
-	protected void actionPerformed(FrontEndProjectTreeContext context) {
+	protected void actionPerformed(ProjectDataTreeActionContext context) {
 		TreePath[] paths = adjustSelectionPaths(context.getSelectionPaths());
 
 		DataTreeClipboardUtils.setClipboardContents(context.getTree(), paths);
@@ -46,7 +46,7 @@ public class ProjectDataCutAction extends ProjectDataCopyCutBaseAction {
 	}
 
 	@Override
-	protected boolean isEnabledForContext(FrontEndProjectTreeContext context) {
+	protected boolean isEnabledForContext(ProjectDataTreeActionContext context) {
 		if (!context.hasOneOrMoreFilesAndFolders()) {
 			return false;
 		}

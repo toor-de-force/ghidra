@@ -22,7 +22,6 @@ import java.beans.PropertyEditorSupport;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import javax.swing.*;
 
@@ -104,7 +103,7 @@ public class FontPropertyEditor extends PropertyEditorSupport {
 		JLabel fontLabel, sizeLabel, styleLabel;
 		JLabel fontStringLabel;
 		JComboBox<FontWrapper> fonts;
-		JComboBox<Integer> sizes;
+		JComboBox<String> sizes;
 		JComboBox<String> styles;
 		int styleChoice;
 		int sizeChoice;
@@ -171,11 +170,12 @@ public class FontPropertyEditor extends PropertyEditorSupport {
 			fontPanel.add(fonts);
 			fonts.setSelectedItem(fontWrapper);
 
-			sizes = new GComboBox<>(IntStream.rangeClosed(1, 72).boxed().toArray(Integer[]::new));
+			sizes = new GComboBox<>(
+				new String[] { "8", "10", "12", "14", "16", "18", "24", "28", "32" });
 			sizes.setMaximumRowCount(9);
 			sizePanel.add(sizes);
 			sizeChoice = font.getSize();
-			sizes.setSelectedItem(sizeChoice);
+			sizes.setSelectedItem("" + sizeChoice);
 			sizes.setMaximumRowCount(9);
 
 			styles = new GComboBox<>(new String[] { "PLAIN", "BOLD", "ITALIC", "BOLD & ITALIC" });
@@ -203,7 +203,8 @@ public class FontPropertyEditor extends PropertyEditorSupport {
 				styleChoice = styles.getSelectedIndex();
 			}
 			else {
-				sizeChoice = (Integer) sizes.getSelectedItem();
+				String sizeStr = (String) sizes.getSelectedItem();
+				sizeChoice = Integer.parseInt(sizeStr);
 			}
 
 			font = new Font(fontNameChoice, styleChoice, sizeChoice);

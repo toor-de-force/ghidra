@@ -77,8 +77,6 @@ public abstract class DockingAction implements DockingActionIf {
 	private Predicate<ActionContext> popupPredicate;
 	private Predicate<ActionContext> validContextPredicate;
 
-	private boolean supportsDefaultToolContext;
-
 	public DockingAction(String name, String owner) {
 		this.name = name;
 		this.owner = owner;
@@ -217,22 +215,13 @@ public abstract class DockingAction implements DockingActionIf {
 	}
 
 	@Override
-	public void setEnabled(boolean newValue) {
+	public boolean setEnabled(boolean newValue) {
 		if (isEnabled == newValue) {
-			return;
+			return isEnabled;
 		}
 		isEnabled = newValue;
 		firePropertyChanged(ENABLEMENT_PROPERTY, !isEnabled, isEnabled);
-	}
-
-	@Override
-	public void setSupportsDefaultToolContext(boolean newValue) {
-		supportsDefaultToolContext = newValue;
-	}
-
-	@Override
-	public boolean supportsDefaultToolContext() {
-		return supportsDefaultToolContext;
+		return !isEnabled;
 	}
 
 	@Override
@@ -593,6 +582,7 @@ public abstract class DockingAction implements DockingActionIf {
 			inceptionInformation = "";
 			return;
 		}
+
 		inceptionInformation = getInceptionFromTheFirstClassThatIsNotUsOrABuilder();
 	}
 

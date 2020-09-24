@@ -282,7 +282,7 @@ public class ProjectDataTablePanel extends JPanel {
 			list.add(info.getDomainFile());
 		}
 
-		return new ProjectDataContext(provider, projectData,
+		return new ProjectDataActionContext(provider, projectData,
 			model.getRowObject(selectedRows[0]), null, list, gTable, true);
 	}
 

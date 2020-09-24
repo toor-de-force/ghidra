@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 package docking.action.builder;
-
 import docking.ActionContext;
 import docking.action.DockingAction;
 

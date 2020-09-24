@@ -73,23 +73,10 @@ public interface Composite extends DataType {
 	public void setDescription(String desc);
 
 	/**
-	 * Gets the number of component data types in this composite.
-	 * The count will include all undefined filler components which may be present
-	 * within an unaligned structure.  Structures do not include the
-	 * optional trailing flexible array component in this count 
-	 * (see {@link Structure#hasFlexibleArrayComponent()}).
-	 * @return the number of components that make up this composite
+	 * Gets the number of component data types in this data type.
+	 * @return the number of components that make up this data prototype
 	 */
 	public abstract int getNumComponents();
-
-	/**
-	 * Returns the number of explicitly defined components in this composite. 
-	 * For Unions and aligned Structures this is equivalent to {@link #getNumComponents()} 
-	 * since they do not contain undefined components.  The count will exclude all undefined 
-	 * filler components which may be present within an unaligned structure.
-	 * @return  the number of explicitly defined components in this composite
-	 */
-	public abstract int getNumDefinedComponents();
 
 	/**
 	 * Returns the component of this data type with the indicated ordinal.
@@ -100,24 +87,10 @@ public interface Composite extends DataType {
 	public abstract DataTypeComponent getComponent(int ordinal);
 
 	/**
-	 * Returns an array of Data Type Components that make up this composite including
-	 * undefined filler components which may be present within an unaligned structure.
-	 * The number of components corresponds to {@link #getNumComponents()}.
-	 * @return list all components
+	 * Returns an array of Data Type Components that make up this data type.
+	 * Returns an array of length 0 if there are no subcomponents.
 	 */
 	public abstract DataTypeComponent[] getComponents();
-
-	/**
-	 * Returns an array of Data Type Components that make up this composite excluding
-	 * undefined filler components which may be present within an unaligned structure.
-	 * The number of components corresponds to {@link #getNumComponents()}.  For Unions and 
-	 * aligned Structures this is equivalent to {@link #getComponents()} 
-	 * since they do not contain undefined components.  Structures do not include the
-	 * optional trailing flexible array component in this list 
-	 * (see {@link Structure#getFlexibleArrayComponent()}).
-	 * @return list all explicitly defined components
-	 */
-	public abstract DataTypeComponent[] getDefinedComponents();
 
 	/**
 	 * Adds a new datatype to the end of this composite.  This is the preferred method
@@ -129,7 +102,7 @@ public interface Composite extends DataType {
 	 * For example, suppose dt1 contains dt2. Therefore it is not valid
 	 * to add dt1 to dt2 since this would cause a cyclic dependency.
 	 */
-	public DataTypeComponent add(DataType dataType) throws IllegalArgumentException;
+	public DataTypeComponent add(DataType dataType);
 
 	/**
 	 * Adds a new datatype to the end of this composite. This is the preferred method
@@ -145,7 +118,7 @@ public interface Composite extends DataType {
 	 * For example, suppose dt1 contains dt2. Therefore it is not valid
 	 * to add dt1 to dt2 since this would cause a cyclic dependency.
 	 */
-	public DataTypeComponent add(DataType dataType, int length) throws IllegalArgumentException;
+	public DataTypeComponent add(DataType dataType, int length);
 
 	/**
 	 * Adds a new datatype to the end of this composite.  This is the preferred method
@@ -159,8 +132,7 @@ public interface Composite extends DataType {
 	 * For example, suppose dt1 contains dt2. Therefore it is not valid
 	 * to add dt1 to dt2 since this would cause a cyclic dependency.
 	 */
-	public DataTypeComponent add(DataType dataType, String name, String comment)
-			throws IllegalArgumentException;
+	public DataTypeComponent add(DataType dataType, String name, String comment);
 
 	/**
 	 * Adds a new bitfield to the end of this composite.  This method is intended 
@@ -194,8 +166,7 @@ public interface Composite extends DataType {
 	 * For example, suppose dt1 contains dt2. Therefore it is not valid
 	 * to add dt1 to dt2 since this would cause a cyclic dependency.
 	 */
-	public DataTypeComponent add(DataType dataType, int length, String name, String comment)
-			throws IllegalArgumentException;
+	public DataTypeComponent add(DataType dataType, int length, String name, String comment);
 
 	/**
 	 * Inserts a new datatype at the specified ordinal position in this composite.
@@ -210,7 +181,7 @@ public interface Composite extends DataType {
 	 * to insert dt1 to dt2 since this would cause a cyclic dependency.
 	 * @throws ArrayIndexOutOfBoundsException if component ordinal is out of bounds
 	 */
-	public DataTypeComponent insert(int ordinal, DataType dataType) throws IllegalArgumentException;
+	public DataTypeComponent insert(int ordinal, DataType dataType);
 
 	/**
 	 * Inserts a new datatype at the specified ordinal position in this composite.
@@ -228,8 +199,7 @@ public interface Composite extends DataType {
 	 * to insert dt1 to dt2 since this would cause a cyclic dependency.
 	 * @throws ArrayIndexOutOfBoundsException if component ordinal is out of bounds
 	 */
-	public DataTypeComponent insert(int ordinal, DataType dataType, int length)
-			throws IllegalArgumentException;
+	public DataTypeComponent insert(int ordinal, DataType dataType, int length);
 
 	/**
 	 * Inserts a new datatype at the specified ordinal position in this composite.
@@ -250,7 +220,7 @@ public interface Composite extends DataType {
 	 * @throws ArrayIndexOutOfBoundsException if component ordinal is out of bounds
 	 */
 	public DataTypeComponent insert(int ordinal, DataType dataType, int length, String name,
-			String comment) throws ArrayIndexOutOfBoundsException, IllegalArgumentException;
+			String comment);
 
 	/**
 	 * Deletes the component at the given ordinal position.
@@ -259,7 +229,7 @@ public interface Composite extends DataType {
 	 * @param ordinal the ordinal of the component to be deleted.
 	 * @throws ArrayIndexOutOfBoundsException if component ordinal is out of bounds
 	 */
-	public void delete(int ordinal) throws ArrayIndexOutOfBoundsException;
+	public void delete(int ordinal);
 
 	/**
 	 * Deletes the components at the given ordinal positions.
@@ -268,7 +238,7 @@ public interface Composite extends DataType {
 	 * @param ordinals the ordinals of the component to be deleted.
 	 * @throws ArrayIndexOutOfBoundsException if any specified component ordinal is out of bounds
 	 */
-	public void delete(int[] ordinals) throws ArrayIndexOutOfBoundsException;
+	public void delete(int[] ordinals);
 
 	/**
 	 * Check if a data type is part of this data type.  A data type could

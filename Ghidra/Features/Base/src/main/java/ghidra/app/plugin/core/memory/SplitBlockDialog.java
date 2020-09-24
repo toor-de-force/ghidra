@@ -29,9 +29,9 @@ import ghidra.app.plugin.core.misc.RegisterField;
 import ghidra.app.util.AddressInput;
 import ghidra.app.util.HelpTopics;
 import ghidra.program.model.address.*;
-import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.util.HelpLocation;
+import ghidra.util.NamingUtilities;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.layout.PairLayout;
 
@@ -85,14 +85,15 @@ class SplitBlockDialog extends DialogComponentProvider {
 			newBlockName = block.getName() + ".split";
 			blockTwoNameField.setText(newBlockName);
 		}
-		if (!Memory.isValidAddressSpaceName(newBlockName)) {
+		if (!plugin.getMemoryMapManager().isValidBlockName(newBlockName)) {
+			setStatusText("Block name already exists");
+			return;
+		}
+		if (!NamingUtilities.isValidName(newBlockName)) {
 			setStatusText("Invalid Block Name: " + newBlockName);
 			return;
 		}
-		if (plugin.getMemoryMapManager().isDuplicateName(newBlockName)) {
-			setStatusText("Address space/overlay named " + newBlockName + " already exists.");
-			return;
-		}
+
 		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 		plugin.getMemoryMapManager().splitBlock(block, blockTwoStart.getAddress(), newBlockName);
 		close();

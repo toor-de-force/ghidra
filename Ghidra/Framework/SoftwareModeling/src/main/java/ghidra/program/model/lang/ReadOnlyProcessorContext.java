@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@ package ghidra.program.model.lang;
  */
 
 import java.math.BigInteger;
-import java.util.List;
 
 public class ReadOnlyProcessorContext implements ProcessorContext {
 
@@ -42,7 +42,7 @@ public class ReadOnlyProcessorContext implements ProcessorContext {
 	}
 
 	@Override
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		return context.getRegisters();
 	}
 

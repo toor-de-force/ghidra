@@ -128,7 +128,7 @@ public class FileFormatsPlugin extends Plugin implements FrontEndable {
 						new AndroidProjectCreator(refdFile.file, outputDirectory);
 					creator.create(monitor);
 
-					if (creator.getLog().hasMessages()) {
+					if (creator.getLog().getMsgCount() > 0) {
 						Msg.showInfo(this, getTool().getActiveWindow(), "Export to Eclipse Project",
 							creator.getLog().toString());
 					}
@@ -194,7 +194,7 @@ public class FileFormatsPlugin extends Plugin implements FrontEndable {
 								new JarDecompiler(jarFSRL, outputDirectory);
 							decompiler.decompile(monitor);
 
-							if (decompiler.getLog().hasMessages()) {
+							if (decompiler.getLog().getMsgCount() > 0) {
 								Msg.showInfo(this, gTree,
 									"Decompiling Jar " + jarFSRL.getName(),
 									decompiler.getLog().toString());

@@ -30,12 +30,12 @@ import ghidra.app.script.GhidraScriptUtil;
 import ghidra.util.HelpLocation;
 
 public class PickProviderDialog extends DialogComponentProvider {
-	private static String lastSelectedProviderDescription;
-
 	private List<GhidraScriptProvider> providers;
 	private ListPanel listPanel;
 	private JComponent parent;
 	private boolean wasCancelled;
+
+	private static String lastSelectedProviderDescription;
 
 	PickProviderDialog(JComponent parent, HelpLocation help) {
 		super("New Script: Type");
@@ -55,12 +55,6 @@ public class PickProviderDialog extends DialogComponentProvider {
 		setHelpLocation(help);
 	}
 
-	/**
-	 * Constructor used in testing only!
-	 * 
-	 * @param testItems values to populate model with
-	 * @param defaultItem the default selection
-	 */
 	public PickProviderDialog(List<String> testItems, String defaultItem) {
 		super("New Script: Type");
 
@@ -82,8 +76,6 @@ public class PickProviderDialog extends DialogComponentProvider {
 
 	/**
 	 * For testing...
-	 * 
-	 * @param provider the provider selection 
 	 */
 	void setSelectedProvider(GhidraScriptProvider provider) {
 		listPanel.setSelectedValue(provider);
@@ -103,9 +95,6 @@ public class PickProviderDialog extends DialogComponentProvider {
 		return (GhidraScriptProvider) listPanel.getSelectedValue();
 	}
 
-	/**
-	 * close any open dialog
-	 */
 	public void dispose() {
 		close();
 	}

@@ -50,7 +50,7 @@ public class Varnode {
 	public Varnode(Address a, int sz) {
 		address = a;
 		AddressSpace space = address.getAddressSpace();
-		spaceID = space.getSpaceID();
+		spaceID = space.getBaseSpaceID();
 		size = sz;
 		offset = address.getOffset();
 	}
@@ -127,7 +127,7 @@ public class Varnode {
 	 * @return true if this varnode contains the specified address
 	 */
 	public boolean contains(Address address) {
-		if (spaceID != address.getAddressSpace().getSpaceID()) {
+		if (spaceID != address.getAddressSpace().getUniqueSpaceID()) {
 			return false;
 		}
 		if (isConstant() || isUnique() || isHash()) {
@@ -193,7 +193,7 @@ public class Varnode {
 		}
 		for (AddressRange range : set.getAddressRanges()) {
 			Address minAddr = range.getMinAddress();
-			if (minAddr.getAddressSpace().getSpaceID() != spaceID) {
+			if (minAddr.getAddressSpace().getUniqueSpaceID() != spaceID) {
 				continue;
 			}
 			Address maxAddr = range.getMaxAddress();
@@ -244,7 +244,7 @@ public class Varnode {
 	}
 
 	public boolean isHash() {
-		return spaceID == AddressSpace.HASH_SPACE.getSpaceID();
+		return spaceID == AddressSpace.HASH_SPACE.getUniqueSpaceID();
 	}
 
 	/**
@@ -588,7 +588,7 @@ public class Varnode {
 		String localName = el.getName();
 		if (localName.equals("spaceid")) {
 			AddressSpace spc = addrFactory.getAddressSpace(el.getAttribute("name"));
-			int spaceid = spc.getSpaceID();
+			int spaceid = spc.getBaseSpaceID();
 			spc = addrFactory.getConstantSpace();
 			return spc.getAddress(spaceid);
 		}
@@ -613,7 +613,7 @@ public class Varnode {
 			AddressFactory addrFactory) {
 		if (localName.equals("spaceid")) {
 			AddressSpace spc = addrFactory.getAddressSpace(attr.getValue("name"));
-			int spaceid = spc.getSpaceID();
+			int spaceid = spc.getBaseSpaceID();
 			spc = addrFactory.getConstantSpace();
 			return spc.getAddress(spaceid);
 		}
@@ -658,7 +658,7 @@ public class Varnode {
 					if (nameend >= 0) {
 						AddressSpace spc =
 							addrfactory.getAddressSpace(addrstring.substring(attrstart, nameend));
-						int spaceid = spc.getSpaceID();
+						int spaceid = spc.getBaseSpaceID();
 						spc = addrfactory.getConstantSpace();
 						return spc.getAddress(spaceid);
 					}

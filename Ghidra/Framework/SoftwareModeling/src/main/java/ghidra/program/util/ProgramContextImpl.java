@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +17,6 @@
 package ghidra.program.util;
 
 import ghidra.program.database.register.InMemoryRangeMapAdapter;
-import ghidra.program.model.lang.Language;
 import ghidra.program.model.lang.Register;
 
 /**
@@ -24,11 +24,11 @@ import ghidra.program.model.lang.Register;
  */
 public class ProgramContextImpl extends AbstractStoredProgramContext {
 	/**
-	 * Construct a new program context
-	 * @param language program language
+	 * Construct a new program context with the indicated registers.
+	 * @param regs array of handles to registers
 	 */
-	public ProgramContextImpl(Language language) {
-		super(language);
+	public ProgramContextImpl(Register[] regs) {
+		super(regs);
 	}
 
 	@Override

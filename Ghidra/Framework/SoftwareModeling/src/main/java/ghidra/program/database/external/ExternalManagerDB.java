@@ -34,6 +34,7 @@ import ghidra.program.model.symbol.*;
 import ghidra.program.util.LanguageTranslator;
 import ghidra.util.Lock;
 import ghidra.util.Msg;
+import ghidra.util.datastruct.LongObjectHashtable;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
@@ -121,7 +122,7 @@ public class ExternalManagerDB implements ManagerDB, ExternalManager {
 		monitor.initialize(oldNameAdapter.getRecordCount());
 		int cnt = 0;
 
-		Map<Long, String> nameMap = new HashMap<>();
+		LongObjectHashtable<String> nameMap = new LongObjectHashtable<>();
 
 		RecordIterator iter = oldNameAdapter.getRecords();
 		while (iter.hasNext()) {
@@ -261,6 +262,7 @@ public class ExternalManagerDB implements ManagerDB, ExternalManager {
 		SourceType locSourceType = checkExternalLabel(extLabel, extAddr, sourceType);
 		lock.acquire();
 		try {
+			// FIXME:
 			Namespace libraryScope = getLibraryScope(extLibraryName);
 			if (libraryScope == null) {
 				libraryScope = addExternalName(extLibraryName, null,

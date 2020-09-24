@@ -186,7 +186,7 @@ public class RegisterFieldFactory extends FieldFactory {
 	private List<Register> getSetRegisters(Function function) {
 		Program program = function.getProgram();
 		ProgramContext programContext = program.getProgramContext();
-		Register[] registers = programContext.getRegistersWithValues();
+		Register[] registers = programContext.getRegisters();
 		Address address = function.getEntryPoint();
 		List<Register> setRegisters = new ArrayList<>();
 		for (Register register : registers) {

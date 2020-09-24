@@ -77,13 +77,12 @@ public class TableChooserDialogTest extends AbstractGhidraHeadedIntegrationTest 
 		tool.setVisible(true);
 		Program program = new ToyProgramBuilder("Test", true).getProgram();
 		Navigatable navigatable = null;
-		dialog = new TableChooserDialog(tool, executor, program, "Dialog Title", navigatable);
+		dialog = new TableChooserDialog(tool, executor, program, "Title", navigatable);
 
 		testAction = new TestAction();
 		dialog.addAction(testAction);
 
 		dialog.show();
-		waitForDialogComponent(TableChooserDialog.class);
 		loadData();
 	}
 
@@ -290,8 +289,7 @@ public class TableChooserDialogTest extends AbstractGhidraHeadedIntegrationTest 
 		KeyStroke newKs = KeyStroke.getKeyStroke('A', 0, false);
 		setKeyBindingViaF4Dialog(testAction, newKs);
 		triggerKey(dialog.getComponent(), newKs);
-		assertTrue("Action was not invoked from the new key binding: " + newKs,
-			testAction.wasInvoked());
+		assertTrue(testAction.wasInvoked());
 	}
 
 	@Test

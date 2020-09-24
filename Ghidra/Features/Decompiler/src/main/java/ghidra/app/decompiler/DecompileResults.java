@@ -62,10 +62,12 @@ public class DecompileResults {
 	private ClangTokenGroup docroot; // C code parsed from XML
 	private String errMsg; // Error message from decompiler
 	private DecompileProcess.DisposeState processState;
+	private boolean showNamespace; // include namespace when displaying function names
 
 	public DecompileResults(Function f, Language language, CompilerSpec compilerSpec,
 			PcodeDataTypeManager d, String e, InputStream raw,
-			DecompileProcess.DisposeState processState) {
+			DecompileProcess.DisposeState processState,
+			boolean showNamespace) {
 		function = f;
 		this.language = language;
 		this.compilerSpec = compilerSpec;
@@ -74,6 +76,7 @@ public class DecompileResults {
 		hfunc = null;
 		hparamid = null;
 		docroot = null;
+		this.showNamespace = showNamespace;
 		//dumpResults(raw);
 		parseRawString(raw);
 	}
@@ -223,7 +226,7 @@ public class DecompileResults {
 					XmlElement el = parser.peek();
 					if (el.getName().equals("function")) {
 						if (hfunc ==  null) {
-							hfunc = new HighFunction(function, language, compilerSpec, dtmanage);
+							hfunc = new HighFunction(function, language, compilerSpec, dtmanage, showNamespace);
 							hfunc.readXML(parser);
 						}
 						else {		// TODO: This is an ugly kludge to get around duplicate XML tag names
@@ -234,7 +237,9 @@ public class DecompileResults {
 						}
 					}
 					else if (el.getName().equals("parammeasures")) {
-						hparamid = new HighParamID(function, language, compilerSpec, dtmanage);
+						hparamid =
+							new HighParamID(function, language, compilerSpec, dtmanage,
+								showNamespace);
 						hparamid.readXML(parser);
 					}
 					else {

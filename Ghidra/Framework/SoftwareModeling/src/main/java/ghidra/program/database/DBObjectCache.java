@@ -24,18 +24,14 @@ import java.util.*;
 
 import db.Record;
 import ghidra.program.model.address.KeyRange;
+import ghidra.util.datastruct.LongObjectHashtable;
 
 /**
- * Generic cache implementation for objects that extend DatabaseObject. This is a reference based
- * cache such that objects are only ever automatically removed from the cache when there are no
- * references to that object. It also maintains a small "hard" cache so that recently accessed objects
- * are not prematurely removed from the cache if there are no references to them.
- * 
- * @param <T> The type of the object stored in this cache
+ * Generic cache implementation for objects that extend DatabaseObject.
  */
 public class DBObjectCache<T extends DatabaseObject> {
 
-	private Map<Long, KeyedSoftReference> map;
+	private LongObjectHashtable<KeyedSoftReference> hashTable;
 	private ReferenceQueue<T> refQueue;
 	private LinkedList<T> hardCache;
 	private int hardCacheSize;
@@ -49,7 +45,7 @@ public class DBObjectCache<T extends DatabaseObject> {
 	 */
 	public DBObjectCache(int hardCacheSize) {
 		this.hardCacheSize = hardCacheSize;
-		map = new HashMap<Long, KeyedSoftReference>();
+		hashTable = new LongObjectHashtable<KeyedSoftReference>();
 		refQueue = new ReferenceQueue<T>();
 		hardCache = new LinkedList<T>();
 	}
@@ -60,18 +56,18 @@ public class DBObjectCache<T extends DatabaseObject> {
 	 * @return the cached object or null if the object with that key is not currently cached.
 	 */
 	public synchronized T get(long key) {
-		KeyedSoftReference ref = map.get(key);
+		KeyedSoftReference ref = hashTable.get(key);
 		if (ref != null) {
 			T obj = ref.get();
 			if (obj == null) {
-				map.remove(key);
+				hashTable.remove(key);
 			}
 			else {
 				if (obj.checkIsValid()) {
 					addToHardCache(obj);
 					return obj;
 				}
-				map.remove(key);
+				hashTable.remove(key);
 			}
 		}
 		return null;
@@ -89,18 +85,18 @@ public class DBObjectCache<T extends DatabaseObject> {
 	 */
 	public synchronized T get(Record objectRecord) {
 		long key = objectRecord.getKey();
-		KeyedSoftReference ref = map.get(key);
+		KeyedSoftReference ref = hashTable.get(key);
 		if (ref != null) {
 			T obj = ref.get();
 			if (obj == null) {
-				map.remove(key);
+				hashTable.remove(key);
 			}
 			else {
 				if (obj.checkIsValid(objectRecord)) {
 					addToHardCache(obj);
 					return obj;
 				}
-				map.remove(key);
+				hashTable.remove(key);
 			}
 		}
 		return null;
@@ -108,10 +104,9 @@ public class DBObjectCache<T extends DatabaseObject> {
 
 	/**
 	 * Returns the number of objects currently in the cache.
-	 * @return the number of objects currently in the cache.
 	 */
 	public int size() {
-		return map.size();
+		return hashTable.size();
 	}
 
 	/**
@@ -134,17 +129,18 @@ public class DBObjectCache<T extends DatabaseObject> {
 		long key = data.getKey();
 		addToHardCache(data);
 		KeyedSoftReference ref = new KeyedSoftReference(key, data, refQueue);
-		map.put(key, ref);
+		hashTable.put(key, ref);
 	}
 
 	/**
-	 * Returns an List of all the cached objects.
-	 * @return an List of all the cached objects.
+	 * Returns an array of all the cached objects.
 	 */
-	public synchronized List<T> getCachedObjects() {
+	public synchronized ArrayList<T> getCachedObjects() {
 		ArrayList<T> list = new ArrayList<T>();
 		processQueue();
-		for (KeyedSoftReference ref : map.values()) {
+		long[] keys = hashTable.getKeys();
+		for (int i = 0; i < keys.length; i++) {
+			KeyedSoftReference ref = hashTable.get(keys[i]);
 			T obj = ref.get();
 			if (obj != null) {
 				list.add(obj);
@@ -154,7 +150,7 @@ public class DBObjectCache<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Delete all objects from HashMap whose key is contained
+	 * Delete all objects from hashTable whose key is contained
 	 * within the specified keyRanges.
 	 * @param keyRanges key ranges to delete
 	 */
@@ -162,7 +158,7 @@ public class DBObjectCache<T extends DatabaseObject> {
 		hardCache.clear();
 		processQueue();
 		long rangesSize = getKeyRangesSize(keyRanges); // < 0 too many ranges
-		if (rangesSize < 0 || rangesSize > map.size()) {
+		if (rangesSize < 0 || rangesSize > hashTable.size()) {
 			deleteLargeKeyRanges(keyRanges);
 		}
 		else {
@@ -171,7 +167,7 @@ public class DBObjectCache<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Delete all objects from cache whose key is contained
+	 * Delete all objects from hashTable whose key is contained
 	 * within the specified keyRanges.  Iteration over all
 	 * keys contained within keyRanges will be performed.
 	 * @param keyRanges key ranges to delete
@@ -179,7 +175,7 @@ public class DBObjectCache<T extends DatabaseObject> {
 	private void deleteSmallKeyRanges(List<KeyRange> keyRanges) {
 		for (KeyRange range : keyRanges) {
 			for (long key = range.minKey; key <= range.maxKey; key++) {
-				KeyedSoftReference ref = map.remove(key);
+				KeyedSoftReference ref = hashTable.remove(key);
 				if (ref != null) {
 					DatabaseObject obj = ref.get();
 					if (obj != null) {
@@ -192,32 +188,28 @@ public class DBObjectCache<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Delete all objects from cache whose key is contained
+	 * Delete all objects from hashTable whose key is contained
 	 * within the specified keyRanges.  Iteration over all
-	 * keys contained within map will be performed.
+	 * keys contained within hashTable will be performed.
 	 * @param keyRanges key ranges to delete
 	 */
 	private void deleteLargeKeyRanges(List<KeyRange> keyRanges) {
-		map.values().removeIf(ref -> checkRef(ref, keyRanges));
-	}
-
-	private boolean checkRef(KeyedSoftReference ref, List<KeyRange> keyRanges) {
-		long key = ref.getKey();
-		if (keyRangesContain(keyRanges, key)) {
-			DatabaseObject obj = ref.get();
-			if (obj != null) {
-				obj.setDeleted();
-				ref.clear();
+		long[] keys = hashTable.getKeys();
+		for (int i = 0; i < keys.length; i++) {
+			if (keyRangesContain(keyRanges, keys[i])) {
+				KeyedSoftReference ref = hashTable.remove(keys[i]);
+				DatabaseObject obj = ref.get();
+				if (obj != null) {
+					obj.setDeleted();
+					ref.clear();
+				}
 			}
-			return true;
 		}
-		return false;
-
 	}
 
 	/**
 	 * Return total number of keys covered by list of keyRanges.
-	 * @param keyRanges key ranges to get the number of keys
+	 * @param keyRanges
 	 * @return number of keys, or -1 if more than Long.MAX_VALUE keys
 	 */
 	private long getKeyRangesSize(List<KeyRange> keyRanges) {
@@ -251,7 +243,9 @@ public class DBObjectCache<T extends DatabaseObject> {
 		processQueue();
 		if (++invalidateCount <= 0) {
 			invalidateCount = 1;
-			for (KeyedSoftReference ref : map.values()) {
+			long[] keys = hashTable.getKeys();
+			for (int i = 0; i < keys.length; i++) {
+				KeyedSoftReference ref = hashTable.get(keys[i]);
 				DatabaseObject obj = ref.get();
 				if (obj != null) {
 					obj.setInvalid();
@@ -270,19 +264,55 @@ public class DBObjectCache<T extends DatabaseObject> {
 	}
 
 	/**
+	 * Invalidates a range of objects in the cache.
+	 * @param startKey the first key in the range to invalidate.
+	 * @param endKey the last key in the range to invalidate.
+	 */
+	public synchronized void invalidate(long startKey, long endKey) {
+		if (endKey - startKey < hashTable.size()) {
+			for (long i = startKey; i <= endKey; i++) {
+				invalidate(i);
+			}
+		}
+		else {
+			long[] keys = hashTable.getKeys();
+			for (int i = 0; i < keys.length; i++) {
+				if (keys[i] >= startKey && keys[i] <= endKey) {
+					invalidate(keys[i]);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Removes the object with the given key from the cache.
 	 * @param key the key of the object to remove.
 	 */
 	public synchronized void delete(long key) {
 		processQueue();
-		KeyedSoftReference ref = map.get(key);
+		KeyedSoftReference ref = hashTable.get(key);
 		if (ref != null) {
 			T obj = ref.get();
 			if (obj != null) {
 				obj.setDeleted();
 				ref.clear();
 			}
-			map.remove(key);
+			hashTable.remove(key);
+		}
+	}
+
+	/**
+	 * Invalidates the object with given key.
+	 * @param key the key of the object to invalidate.
+	 */
+	public synchronized void invalidate(long key) {
+		processQueue();
+		KeyedSoftReference ref = hashTable.get(key);
+		if (ref != null) {
+			T obj = ref.get();
+			if (obj != null) {
+				obj.setInvalid();
+			}
 		}
 	}
 
@@ -299,14 +329,14 @@ public class DBObjectCache<T extends DatabaseObject> {
 		KeyedSoftReference ref;
 		while ((ref = (KeyedSoftReference) refQueue.poll()) != null) {
 			long key = ref.getKey();
-			KeyedSoftReference oldValue = map.remove(key);
+			KeyedSoftReference oldValue = hashTable.remove(key);
 
 			if (oldValue != null && oldValue != ref) {
 				// we have put another item in the cache with the same key.  Further, we
 				// removed the item, but the garbage collector had not put the item on the
 				// reference queue until after we added a new reference to the cache.
 				// We want to keep the last value that was added, as it has not been deleted.
-				map.put(key, oldValue);
+				hashTable.put(key, oldValue);
 			}
 		}
 	}
@@ -327,9 +357,9 @@ public class DBObjectCache<T extends DatabaseObject> {
 	public synchronized void keyChanged(long oldKey, long newKey) {
 		processQueue();
 
-		KeyedSoftReference ref = map.remove(oldKey);
+		KeyedSoftReference ref = hashTable.remove(oldKey);
 		if (ref != null) {
-			map.put(newKey, ref);
+			hashTable.put(newKey, ref);
 			T t = ref.get();
 			if (t != null) {
 				t.setInvalid();

@@ -18,9 +18,11 @@ package ghidra.program.database.data;
 import java.io.IOException;
 
 import db.Record;
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
-import ghidra.program.model.data.*;
+import ghidra.program.model.data.ArchiveType;
+import ghidra.program.model.data.DataTypeManager;
 import ghidra.util.Lock;
 import ghidra.util.UniversalID;
 

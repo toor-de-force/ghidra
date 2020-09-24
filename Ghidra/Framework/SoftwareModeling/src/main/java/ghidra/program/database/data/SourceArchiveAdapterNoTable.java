@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +16,8 @@
  */
 package ghidra.program.database.data;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.SourceArchive;
 import ghidra.util.UniversalID;
 import ghidra.util.exception.VersionException;
 

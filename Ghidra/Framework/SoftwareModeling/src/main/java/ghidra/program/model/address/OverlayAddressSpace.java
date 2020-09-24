@@ -96,12 +96,8 @@ public class OverlayAddressSpace extends AbstractAddressSpace {
     public long subtract(Address addr1, Address addr2) {
 		AddressSpace space1 = addr1.getAddressSpace();
 		AddressSpace space2 = addr2.getAddressSpace();
-		if (space1.equals(this)) {
-			space1 = originalSpace;
-		}
-		if (space2.equals(this)) {
-			space2 = originalSpace;
-		}
+		if (space1.equals(this)) space1 = originalSpace;
+		if (space2.equals(this)) space2 = originalSpace;
 		if (!space1.equals(space2)) {
 			throw new IllegalArgumentException("Address are in different spaces " +
 						              addr1.getAddressSpace().getName() + " != " + addr2.getAddressSpace().getName());
@@ -208,11 +204,9 @@ public class OverlayAddressSpace extends AbstractAddressSpace {
 		return new GenericAddress(originalSpace, addr.getOffset());
 	}
 	
-	/**
-	 * @return the ID of the address space underlying this space
-	 */
+	@Override
     public int getBaseSpaceID() {
-		return originalSpace.getSpaceID();
+		return originalSpace.getBaseSpaceID();
 	}
 	
 	@Override

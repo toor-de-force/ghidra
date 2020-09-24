@@ -93,7 +93,8 @@ public class MDMangGhidra extends MDMang {
 				newType = new DemangledType(subMangled, demangledSource, qual.toString());
 			}
 			else {
-				newType = new DemangledType(mangledSource, demangledSource, qual.toString());
+				newType =
+					new DemangledType(mangledSource, demangledSource, qual.toString());
 			}
 			parentType.setNamespace(newType);
 			parentType = newType;
@@ -186,8 +187,8 @@ public class MDMangGhidra extends MDMang {
 					variable = new DemangledVariable(mangledSource, demangledSource, "");
 				}
 				else {
-					variable =
-						new DemangledVariable(mangledSource, demangledSource, objectCPP.getName());
+					variable = new DemangledVariable(mangledSource, demangledSource,
+						objectCPP.getName());
 					variable.setNamespace(processNamespace(objectCPP.getQualfication()));
 				}
 				variable.setDatatype(dt);
@@ -350,14 +351,12 @@ public class MDMangGhidra extends MDMang {
 			convention = CompilerSpec.CALLING_CONVENTION_thiscall;
 		}
 		function.setCallingConvention(convention);
-		if (functionType.hasReturn() && functionType.getReturnType() != null) {
-			MDDataType retType = functionType.getReturnType();
-			if (!retType.toString().isEmpty()) {
-				function.setReturnType(processDataType(null, retType));
-			}
+		MDDataType retType = functionType.getReturnType();
+		if ((retType != null) && !retType.toString().isEmpty()) {
+			function.setReturnType(processDataType(null, retType));
 		}
 		MDArgumentsList args = functionType.getArgumentsList();
-		if (functionType.hasArgs() && args != null) {
+		if (args != null) {
 			for (int index = 0; index < args.getNumArgs(); index++) {
 				function.addParameter(processDataType(null, args.getArg(index)));
 			}
@@ -414,14 +413,10 @@ public class MDMangGhidra extends MDMang {
 		MDFunctionType functionType = (MDFunctionType) pointerType.getReferencedType();
 		functionPointer.setCallingConvention(functionType.getCallingConvention().toString());
 		functionPointer.setModifier(pointerType.getCVMod().toString());
-		if (functionType.hasReturn() && functionType.getReturnType() != null) {
-			functionPointer.setReturnType(processDataType(null, functionType.getReturnType()));
-		}
+		functionPointer.setReturnType(processDataType(null, functionType.getReturnType()));
 		MDArgumentsList args = functionType.getArgumentsList();
-		if (functionType.hasArgs() && args != null) {
-			for (int index = 0; index < args.getNumArgs(); index++) {
-				functionPointer.addParameter(processDataType(null, args.getArg(index)));
-			}
+		for (int index = 0; index < args.getNumArgs(); index++) {
+			functionPointer.addParameter(processDataType(null, args.getArg(index)));
 		}
 		MDCVMod thisPointerCVMod = functionType.getThisPointerCVMod();
 		if (thisPointerCVMod != null) {
@@ -454,14 +449,10 @@ public class MDMangGhidra extends MDMang {
 		MDFunctionType functionType = (MDFunctionType) refType.getReferencedType();
 		functionReference.setCallingConvention(functionType.getCallingConvention().toString());
 		functionReference.setModifier(refType.getCVMod().toString());
-		if (functionType.hasReturn() && functionType.getReturnType() != null) {
-			functionReference.setReturnType(processDataType(null, functionType.getReturnType()));
-		}
+		functionReference.setReturnType(processDataType(null, functionType.getReturnType()));
 		MDArgumentsList args = functionType.getArgumentsList();
-		if (functionType.hasArgs() && args != null) {
-			for (int index = 0; index < args.getNumArgs(); index++) {
-				functionReference.addParameter(processDataType(null, args.getArg(index)));
-			}
+		for (int index = 0; index < args.getNumArgs(); index++) {
+			functionReference.addParameter(processDataType(null, args.getArg(index)));
 		}
 		// TODO: fill in lots of functionReference.____ items
 		return functionReference;
@@ -475,14 +466,10 @@ public class MDMangGhidra extends MDMang {
 		functionDefinition.setCallingConvention(functionType.getCallingConvention().toString());
 		functionDefinition.setModifier(functionIndirectType.getCVMod().toString());
 		functionDefinition.incrementPointerLevels();
-		if (functionType.hasReturn() && functionType.getReturnType() != null) {
-			functionDefinition.setReturnType(processDataType(null, functionType.getReturnType()));
-		}
+		functionDefinition.setReturnType(processDataType(null, functionType.getReturnType()));
 		MDArgumentsList args = functionType.getArgumentsList();
-		if (functionType.hasArgs() && args != null) {
-			for (int index = 0; index < args.getNumArgs(); index++) {
-				functionDefinition.addParameter(processDataType(null, args.getArg(index)));
-			}
+		for (int index = 0; index < args.getNumArgs(); index++) {
+			functionDefinition.addParameter(processDataType(null, args.getArg(index)));
 		}
 		// TODO: fill in lots of functionIndirect.____ items
 		return functionDefinition;
@@ -499,14 +486,10 @@ public class MDMangGhidra extends MDMang {
 		functionDefinition.setCallingConvention(functionType.getCallingConvention().toString());
 		functionDefinition.setModifier(modifierType.getCVMod().toString());
 		functionDefinition.incrementPointerLevels();
-		if (functionType.hasReturn() && functionType.getReturnType() != null) {
-			functionDefinition.setReturnType(processDataType(null, functionType.getReturnType()));
-		}
+		functionDefinition.setReturnType(processDataType(null, functionType.getReturnType()));
 		MDArgumentsList args = functionType.getArgumentsList();
-		if (functionType.hasArgs() && args != null) {
-			for (int index = 0; index < args.getNumArgs(); index++) {
-				functionDefinition.addParameter(processDataType(null, args.getArg(index)));
-			}
+		for (int index = 0; index < args.getNumArgs(); index++) {
+			functionDefinition.addParameter(processDataType(null, args.getArg(index)));
 		}
 		// TODO: fill in lots of functionIndirect.____ items
 		return functionDefinition;

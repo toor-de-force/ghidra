@@ -50,10 +50,9 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 	private boolean commitVoidReturn;
 	private int decompilerTimeoutSecs;
 
-	public DecompilerParameterIdCmd(String name, AddressSetView entries,
-			SourceType sourceTypeClearLevel,
+	public DecompilerParameterIdCmd(AddressSetView entries, SourceType sourceTypeClearLevel,
 			boolean commitDataTypes, boolean commitVoidReturn, int decompilerTimeoutSecs) {
-		super(name, true, true, false);
+		super("Create Function Stack Variables", true, true, false);
 		entryPoints.add(entries);
 		this.sourceTypeClearLevel = sourceTypeClearLevel;
 		this.commitDataTypes = commitDataTypes;
@@ -66,13 +65,13 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 		program = (Program) obj;
 
 		CachingPool<DecompInterface> decompilerPool =
-			new CachingPool<>(new DecompilerFactory());
+			new CachingPool<DecompInterface>(new DecompilerFactory());
 		QRunnable<Address> runnable = new ParallelDecompileRunnable(decompilerPool);
 
 		ConcurrentGraphQ<Address> queue = null;
 
 		try {
-			monitor.setMessage(getName() + " - creating dependency graph...");
+			monitor.setMessage("Analyzing Call Hierarchy...");
 			AcyclicCallGraphBuilder builder =
 				new AcyclicCallGraphBuilder(program, entryPoints, true);
 			AbstractDependencyGraph<Address> graph = builder.getDependencyGraph(monitor);
@@ -81,11 +80,10 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 			}
 
 			GThreadPool pool = AutoAnalysisManager.getSharedAnalsysThreadPool();
-			queue = new ConcurrentGraphQ<>(runnable, graph, pool, monitor);
+			queue = new ConcurrentGraphQ<Address>(runnable, graph, pool, monitor);
 			resetFunctionSourceTypes(graph.getValues());
 
-			monitor.setMessage(getName() + " - analyzing...");
-			monitor.initialize(graph.size());
+			monitor.setMessage("Analyzing...");
 
 			queue.execute();
 		}
@@ -116,8 +114,7 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 	 */
 	private boolean funcIsExternalGlue(Function func) {
 		String blockName = program.getMemory().getBlock(func.getEntryPoint()).getName();
-		return (blockName.equals("EXTERNAL") || blockName.equals(".plt") ||
-			blockName.equals("__stub_helper"));
+		return (blockName.equals("EXTERNAL") || blockName.equals(".plt") || blockName.equals("__stub_helper"));
 	}
 
 	private void resetFunctionSourceTypes(Set<Address> set) {
@@ -150,8 +147,10 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 				}
 			}
 			catch (InvalidInputException e) {
-				Msg.warn(this,
-					"Error changing signature SourceType on--" + func.getName(), e);
+				Msg.warn(
+					this,
+					"Error changing signature SourceType (should not since Input is the same) on--" +
+						func.getName(), e);
 			}
 		}
 	}
@@ -249,10 +248,10 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 	}
 
 	/**
-	 * Check for consistency of returned results.  Trying to propagate, don't want to propagate garbage.
+	 * Check for consistency of returned results.  Trying to propogate, don't want to propagate garbage.
 	 *  
-	 * @param decompRes the decompile result
-	 * @return true if inconsistent results
+	 * @param decompRes
+	 * @return
 	 */
 	private boolean hasInconsistentResults(DecompileResults decompRes) {
 		HighFunction hfunc = decompRes.getHighFunction();
@@ -383,7 +382,7 @@ public class DecompilerParameterIdCmd extends BackgroundCommand {
 		private void doWork(Function function, DecompInterface decompiler, TaskMonitor monitor)
 				throws CancelledException {
 			monitor.checkCanceled();
-			monitor.setMessage(getName() + " - decompile " + function.getName());
+			monitor.setMessage("Decompile " + function.getName());
 			analyzeFunction(decompiler, function, monitor);
 		}
 

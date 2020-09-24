@@ -39,6 +39,7 @@ public class ClassFileAnalysisState implements AnalysisState {
 
 	private Program program;
 	private ClassFileJava classFile;					// Constant-pool and method descriptions
+	private UniqueAddressFactory uniqueFactory;			// Produces temporary registers during p-code generation
 	private HashMap<Address, MethodInfoJava> methodMap;	// Map from address to method description
 
 	public ClassFileAnalysisState(Program program) throws IOException {
@@ -52,6 +53,8 @@ public class ClassFileAnalysisState implements AnalysisState {
 		MemoryByteProvider provider = new MemoryByteProvider(memory, space);
 		BinaryReader reader = new BinaryReader(provider, false);
 		classFile = new ClassFileJava(reader);
+		uniqueFactory =
+			new UniqueAddressFactory(program.getAddressFactory(), program.getLanguage());
 	}
 
 	/**
@@ -67,18 +70,25 @@ public class ClassFileAnalysisState implements AnalysisState {
 	 * @return the MethodInfoJava describing the method, or null if no method is found at the address
 	 */
 	public MethodInfoJava getMethodInfo(Address addr) {
-		synchronized (this) {
-			if (methodMap == null) {
-				try {
-					buildMethodMap();
-				}
-				catch (MemoryAccessException e) {
-					Msg.error(this, e.getMessage(), e);
-					// methodMap will be non-null but empty
-				}
+		if (methodMap == null) {
+			try {
+				buildMethodMap();
+			}
+			catch (MemoryAccessException e) {
+				Msg.error(this, e.getMessage(), e);
+				// methodMap will be non-null but empty
 			}
 		}
 		return methodMap.get(addr);
+	}
+
+	/**
+	 * Generate (the address of) a new temporary register, for use when resolving injections
+	 * during p-code generation for a Java instruction
+	 * @return the address of the next available temporary register
+	 */
+	public Address getNextUniqueAddress() {
+		return uniqueFactory.getNextUniqueAddress();
 	}
 
 	/**
@@ -104,7 +114,7 @@ public class ClassFileAnalysisState implements AnalysisState {
 	 * @param program
 	 * @return <code>ClassFileAnalysisState</code> for specified program instance
 	 */
-	public static synchronized ClassFileAnalysisState getState(Program program) throws IOException {
+	public static ClassFileAnalysisState getState(Program program) throws IOException {
 		ClassFileAnalysisState analysisState =
 			AnalysisStateInfo.getAnalysisState(program, ClassFileAnalysisState.class);
 		if (analysisState == null) {

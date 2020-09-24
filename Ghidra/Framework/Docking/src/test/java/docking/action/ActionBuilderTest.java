@@ -28,6 +28,7 @@ import resources.Icons;
 public class ActionBuilderTest {
 	private int actionCount = 0;
 
+
 	@Test
 	public void testDescription() {
 		DockingAction action = new ActionBuilder("Test", "Test")
@@ -162,7 +163,7 @@ public class ActionBuilderTest {
 				.onAction(e -> actionCount++)
 				.build();
 
-		assertEquals(KeyStroke.getKeyStroke("alt pressed A"), action.getKeyBinding());
+		assertEquals(KeyStroke.getKeyStroke("ALT A"), action.getKeyBinding());
 	}
 
 	@Test

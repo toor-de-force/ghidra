@@ -15,7 +15,6 @@
  */
 package mdemangler.naming;
 
-import ghidra.util.Msg;
 import mdemangler.*;
 import mdemangler.object.MDObjectCPP;
 import mdemangler.template.MDTemplateNameAndArguments;
@@ -26,11 +25,11 @@ import mdemangler.template.MDTemplateNameAndArguments;
  */
 public class MDBasicName extends MDParsableItem {
 	MDSpecialName specialName;
-	MDTemplateNameAndArguments templateNameAndArguments;
+	MDTemplateNameAndArguments tn;
 	MDReusableName reusableName;
 	MDObjectCPP embeddedObject;
 	MDQualification embeddedObjectQualification;
-	String nameModifier;
+	String nameModifier = "";
 
 	public MDBasicName(MDMang dmang) {
 		super(dmang);
@@ -44,8 +43,8 @@ public class MDBasicName extends MDParsableItem {
 		if (specialName != null) {
 			return specialName.isConstructor();
 		}
-		if (templateNameAndArguments != null) {
-			return templateNameAndArguments.isConstructor();
+		else if (tn != null) {
+			return tn.isConstructor();
 		}
 		return false;
 	}
@@ -54,8 +53,8 @@ public class MDBasicName extends MDParsableItem {
 		if (specialName != null) {
 			return specialName.isDestructor();
 		}
-		if (templateNameAndArguments != null) {
-			return templateNameAndArguments.isDestructor();
+		else if (tn != null) {
+			return tn.isDestructor();
 		}
 		return false;
 	}
@@ -64,8 +63,8 @@ public class MDBasicName extends MDParsableItem {
 		if (specialName != null) {
 			return specialName.isTypeCast();
 		}
-		if (templateNameAndArguments != null) {
-			return templateNameAndArguments.isTypeCast();
+		if (tn != null) {
+			return tn.isTypeCast();
 		}
 		return false;
 	}
@@ -99,10 +98,10 @@ public class MDBasicName extends MDParsableItem {
 		if (specialName != null) {
 			return specialName.getName();
 		}
-		if (templateNameAndArguments != null) {
-			return templateNameAndArguments.getName();
+		else if (tn != null) {
+			return tn.getName();
 		}
-		if (reusableName != null) {
+		else if (reusableName != null) {
 			return reusableName.getName();
 		}
 		return "";
@@ -123,30 +122,8 @@ public class MDBasicName extends MDParsableItem {
 		if (specialName != null) {
 			specialName.setName(name);
 		}
-		else if (templateNameAndArguments != null) {
-			templateNameAndArguments.setName(name);
-		}
-		else {
-			Msg.warn(this, "name cannot be set");
-		}
-	}
-
-	// This needs to be separate from nameModifier.  The contrived example that follows
-	//  shows that both a nameModifier as well as a castTypeString should be considered
-	//  separately, as both can exist.  Trying to manage multiple calls to
-	//  setNameModifier() would not work because their order would need to be managed and
-	//  the results merged.  Makes no sense to have anything but two separate notions.
-	//	"??Bname@@O7AAHXZ"
-	//	"[thunk]:protected: virtual __cdecl name::operator int`adjustor{8}' (void)"
-	public void setCastTypeString(String castTypeString) {
-		if (specialName != null) {
-			specialName.setCastTypeString(castTypeString);
-		}
-		else if (templateNameAndArguments != null) {
-			templateNameAndArguments.setCastTypeString(castTypeString);
-		}
-		else {
-			Msg.warn(this, "castTypeString cannot be set");
+		else if (tn != null) {
+			tn.setName(name);
 		}
 	}
 
@@ -162,11 +139,9 @@ public class MDBasicName extends MDParsableItem {
 			embeddedObject.insert(builder);
 		}
 		else {
-			templateNameAndArguments.insert(builder);
+			tn.insert(builder);
 		}
-		if (nameModifier != null) {
-			builder.append(nameModifier);
-		}
+		builder.append(nameModifier);
 	}
 
 	@Override
@@ -174,8 +149,8 @@ public class MDBasicName extends MDParsableItem {
 		// First pass can only have name fragment of special name
 		if (dmang.peek() == '?') {
 			if (dmang.peek(1) == '$') {
-				templateNameAndArguments = new MDTemplateNameAndArguments(dmang);
-				templateNameAndArguments.parse();
+				tn = new MDTemplateNameAndArguments(dmang);
+				tn.parse();
 			}
 			else if (dmang.peek(1) == '?') {
 				// Seems to only hit here for second '?' of "???" sequence.

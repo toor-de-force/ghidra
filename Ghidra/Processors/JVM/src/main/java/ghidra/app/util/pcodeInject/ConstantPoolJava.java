@@ -103,7 +103,7 @@ public class ConstantPoolJava extends ConstantPool {
 					new ParameterDefinitionImpl("", params.get(i), null);
 				paramDefs[i] = currentParam;
 			}
-			funcDef.setGenericCallingConvention(GenericCallingConvention.stdcall);
+			res.hasThisPtr = false;
 		}
 		//invokeinterface, invokespecial, and invokevirtual do have a this pointer
 		else {
@@ -116,7 +116,7 @@ public class ConstantPoolJava extends ConstantPool {
 					new ParameterDefinitionImpl("", params.get(i - 1), null);
 				paramDefs[i] = currentParam;
 			}
-			funcDef.setGenericCallingConvention(GenericCallingConvention.thiscall);
+			res.hasThisPtr = true;
 		}
 		funcDef.setArguments(paramDefs);
 		res.type = new PointerDataType(funcDef);

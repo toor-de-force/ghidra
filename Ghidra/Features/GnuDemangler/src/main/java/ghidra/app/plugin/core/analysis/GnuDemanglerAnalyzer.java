@@ -133,7 +133,7 @@ public class GnuDemanglerAnalyzer extends AbstractDemanglerAnalyzer {
 			return true;
 		}
 		catch (IOException e) {
-			log.appendMsg(getName(), "Invalid options for GNU dangler '" + demanglerName +
+			log.error(getName(), "Invalid options for GNU dangler '" + demanglerName +
 				"': " + applicationArguments);
 			log.appendException(e);
 		}
@@ -148,7 +148,7 @@ public class GnuDemanglerAnalyzer extends AbstractDemanglerAnalyzer {
 				return true;
 			}
 			catch (IOException e) {
-				log.appendMsg(getName(),
+				log.error(getName(),
 					"Invalid options for GNU dangler '" + deprecatedName + "': " +
 						applicationArguments);
 				log.appendException(e);

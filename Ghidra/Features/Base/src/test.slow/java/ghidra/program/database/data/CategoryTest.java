@@ -21,6 +21,7 @@ import java.util.*;
 
 import org.junit.*;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.program.database.ProgramBuilder;
 import ghidra.program.database.ProgramDB;
 import ghidra.program.model.data.*;
@@ -701,17 +702,17 @@ public class CategoryTest extends AbstractGhidraHeadedIntegrationTest {
 		assertTrue(dt.isEquivalent(ev.dt));
 		assertEquals(null, ev.parent);
 
-//		ev = getEvent(4);  // eliminated size change event during creation
-//		assertEquals("DT Changed", ev.evName);
-//		assertTrue(dt.isEquivalent(ev.dt));
-//		assertEquals(null, ev.parent);
-
 		ev = getEvent(4);
+		assertEquals("DT Changed", ev.evName);
+		assertTrue(dt.isEquivalent(ev.dt));
+		assertEquals(null, ev.parent);
+
+		ev = getEvent(5);
 		assertEquals("DT Added", ev.evName);
 		assertTrue(dt.isEquivalent(ev.dt));
 		assertEquals(sub1.getCategoryPath(), ev.parent);
 
-		assertEquals(5, getEventCount());
+		assertEquals(6, getEventCount());
 
 	}
 
@@ -803,8 +804,8 @@ public class CategoryTest extends AbstractGhidraHeadedIntegrationTest {
 
 		struct2 = (Structure) newDt.insert(3, struct2).getDataType();
 
-		assertEquals(4, getEventCount());
-		Event ev = getEvent(3);
+		assertEquals(5, getEventCount());
+		Event ev = getEvent(4);
 		assertEquals("DT Changed", ev.evName);
 		assertEquals(newDt, ev.dt);
 	}

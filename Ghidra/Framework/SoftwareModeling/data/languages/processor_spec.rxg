@@ -40,14 +40,6 @@
           </element>
         </optional>
 
-		<zeroOrMore>
-		  <element name="inferptrbounds">
-		    <oneOrMore>
-		      <ref name="range_type"/>
-		    </oneOrMore>
-		  </element>
-		</zeroOrMore>
-
         <optional>
           <element name="segmented_address">
             <attribute name="space"/>
@@ -104,6 +96,11 @@
                 </optional>
                 <optional>
                   <attribute name="hidden">
+                    <ref name="boolean_type"/>
+                  </attribute>
+                </optional>
+                <optional>
+                  <attribute name="unused">
                     <ref name="boolean_type"/>
                   </attribute>
                 </optional>

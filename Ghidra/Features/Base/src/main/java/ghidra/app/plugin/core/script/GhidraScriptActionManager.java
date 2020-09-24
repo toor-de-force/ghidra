@@ -20,25 +20,20 @@ import java.awt.event.KeyEvent;
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import javax.swing.Icon;
 import javax.swing.KeyStroke;
 
 import docking.ActionContext;
 import docking.DockingUtils;
 import docking.action.*;
-import docking.action.builder.ActionBuilder;
 import docking.actions.KeyBindingUtils;
 import docking.tool.ToolConstants;
 import docking.widgets.table.GTable;
 import generic.jar.ResourceFile;
-import ghidra.app.script.GhidraScriptInfoManager;
+import ghidra.app.script.GhidraScriptUtil;
 import ghidra.app.script.ScriptInfo;
 import ghidra.framework.Application;
 import ghidra.framework.options.SaveState;
@@ -54,34 +49,36 @@ class GhidraScriptActionManager {
 		KeyEvent.VK_R, DockingUtils.CONTROL_KEY_MODIFIER_MASK | InputEvent.SHIFT_DOWN_MASK);
 	private static final String SCRIPT_ACTIONS_KEY = "Scripts_Actions_Key";
 
-	private static final String RESOURCE_FILE_ACTION_RUN_GROUP = "1";
-
 	private GhidraScriptComponentProvider provider;
 	private GhidraScriptMgrPlugin plugin;
-	private GhidraScriptInfoManager infoManager;
-	private DockingAction showBundleStatusAction;
+	private DockingAction refreshAction;
+	private DockingAction scriptDirsAction;
 	private DockingAction newAction;
+	private DockingAction runAction;
 	private DockingAction runLastAction;
 	private DockingAction globalRunLastAction;
+	private DockingAction editAction;
+	private DockingAction eclipseAction;
+	private DockingAction deleteAction;
 	private DockingAction renameAction;
 	private DockingAction keyBindingAction;
+	private DockingAction helpAction;
 	private Map<ResourceFile, ScriptAction> actionMap = new HashMap<>();
 
-	GhidraScriptActionManager(GhidraScriptComponentProvider provider, GhidraScriptMgrPlugin plugin,
-			GhidraScriptInfoManager infoManager) {
+	GhidraScriptActionManager(GhidraScriptComponentProvider provider,
+			GhidraScriptMgrPlugin plugin) {
 		this.provider = provider;
 		this.plugin = plugin;
-		this.infoManager = infoManager;
 		createActions();
 	}
 
 	void dispose() {
-		actionMap.values().forEach(ScriptAction::dispose);
+		actionMap.values().forEach(a -> a.dispose());
 		actionMap.clear();
 	}
 
 	void restoreUserDefinedKeybindings(SaveState saveState) {
-		Collection<ResourceFile> dirs = provider.getBundleHost().getBundleFiles();
+		List<ResourceFile> dirs = GhidraScriptUtil.getScriptSourceDirectories();
 		String[] names = saveState.getNames();
 
 		for (String name : names) {
@@ -110,7 +107,7 @@ class GhidraScriptActionManager {
 	void restoreScriptsThatAreInTool(SaveState saveState) {
 		String[] array = saveState.getStrings(SCRIPT_ACTIONS_KEY, new String[0]);
 		for (String filename : array) {
-			ScriptInfo info = infoManager.findScriptInfoByName(filename);
+			ScriptInfo info = GhidraScriptUtil.findScriptByName(filename);
 			if (info != null) { // the file may have been deleted from disk
 				provider.getActionManager().createAction(info.getSourceFile());
 			}
@@ -132,10 +129,8 @@ class GhidraScriptActionManager {
 				continue;
 			}
 			ResourceFile scriptFile = action.getScript();
-			ScriptInfo info = infoManager.getExistingScriptInfo(scriptFile);
+			ScriptInfo info = GhidraScriptUtil.getScriptInfo(scriptFile);
 			if (info == null) {
-				Msg.showError(this, provider.getComponent(), "Bad state?",
-					"action associated with a script that has no info");
 				continue;//bad state?
 			}
 
@@ -175,117 +170,254 @@ class GhidraScriptActionManager {
 		globalRunLastAction.firePropertyChanged(DockingActionIf.DESCRIPTION_PROPERTY, "", newDesc);
 	}
 
-	private DockingAction createScriptAction(String name, String menuEntry, String description,
-			Icon icon, String toolBarGroup, Runnable runnable) {
-		return new ActionBuilder(name, plugin.getName()).popupMenuPath(menuEntry)
-				.popupMenuIcon(icon)
-				.toolBarIcon(icon)
-				.toolBarGroup(toolBarGroup)
-				.description(description)
-				.enabled(false)
-				.enabledWhen(context -> context.getContextObject() instanceof ResourceFile)
-				.onAction(context -> runnable.run())
-				.buildAndInstallLocal(provider);
-	}
-
-	private DockingAction createScriptTableAction(String name, String description, Icon icon,
-			Runnable runnable) {
-		return new ActionBuilder(name, plugin.getName()).popupMenuPath(name)
-				.popupMenuIcon(icon)
-				.toolBarIcon(icon)
-				.toolBarGroup(null)
-				.description(description)
-				.enabledWhen(context -> {
-					Object contextObject = context.getContextObject();
-					return (contextObject instanceof GTable) ||
-						(contextObject instanceof ResourceFile);
-				})
-				.onAction(context -> runnable.run())
-				.buildAndInstallLocal(provider);
-	}
-
 	private void createActions() {
-		createScriptAction("Run", "Run Script", "Run Script",
-			ResourceManager.loadImage("images/play.png"), RESOURCE_FILE_ACTION_RUN_GROUP,
-			provider::runScript);
+		//
+		// 'run' actions
+		//
+		String runGroup = "1";
+		runAction = new DockingAction("Run", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.runScript();
+			}
 
-		runLastAction = new RerunLastScriptAction(RESOURCE_FILE_ACTION_RUN_GROUP);
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return contextObject instanceof ResourceFile;
+			}
+		};
+		runAction.setPopupMenuData(new MenuData(new String[] { "Run" },
+			ResourceManager.loadImage("images/play.png"), null));
+		runAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/play.png"), runGroup));
+
+		runAction.setDescription("Run Script");
+		runAction.setEnabled(false);
+		plugin.getTool().addLocalAction(provider, runAction);
+
+		runLastAction = new RerunLastScriptAction(runGroup);
 		plugin.getTool().addLocalAction(provider, runLastAction);
-
 		globalRunLastAction = new RerunLastScriptAction("Xtra");
 		plugin.getTool().addAction(globalRunLastAction);
 
-		createScriptAction("Edit", "Edit with basic editor", "Edit Script with basic editor",
-			ResourceManager.loadImage("images/accessories-text-editor.png"), null,
-			provider::editScriptBuiltin);
+		//
+		// End 'run' actions
+		//
 
-		createScriptAction("EditEclipse", "Edit with Eclipse", "Edit Script with Eclipse",
-			ResourceManager.loadImage("images/eclipse.png"), null, provider::editScriptEclipse);
+		editAction = new DockingAction("Edit", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.editScriptBuiltin();
+			}
 
-		keyBindingAction =
-			createScriptAction("Key Binding", "Assign Key Binding", "Assign Key Binding",
-				ResourceManager.loadImage("images/key.png"), null, provider::assignKeyBinding);
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return contextObject instanceof ResourceFile;
+			}
+		};
+		editAction.setPopupMenuData(new MenuData(new String[] { "Edit with basic editor" },
+			ResourceManager.loadImage("images/accessories-text-editor.png"), null));
+		editAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/accessories-text-editor.png"), null));
+		editAction.setDescription("Edit Script with basic editor");
+		editAction.setEnabled(false);
+		plugin.getTool().addLocalAction(provider, editAction);
 
-		createScriptAction("Delete", "Delete", "Delete Script",
-			ResourceManager.loadImage("images/edit-delete.png"), null, provider::deleteScript);
+		eclipseAction = new DockingAction("EditEclipse", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.editScriptEclipse();
+			}
 
-		renameAction = createScriptAction("Rename", "Rename", "Rename Script",
-			ResourceManager.loadImage("images/textfield_rename.png"), null, provider::renameScript);
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return contextObject instanceof ResourceFile;
+			}
+		};
+		eclipseAction.setPopupMenuData(new MenuData(new String[] { "Edit with Eclipse" },
+			ResourceManager.loadImage("images/eclipse.png"), null));
+		eclipseAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/eclipse.png"), null));
+		eclipseAction.setDescription("Edit Script with Eclipse");
+		eclipseAction.setEnabled(false);
+		plugin.getTool().addLocalAction(provider, eclipseAction);
 
-		newAction = createScriptTableAction("New", "Create New Script",
-			ResourceManager.loadImage("images/script_add.png"), provider::newScript);
+		keyBindingAction = new DockingAction("Key Binding", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.assignKeyBinding();
+			}
 
-		createScriptTableAction("Refresh", "Refresh Script List", Icons.REFRESH_ICON,
-			provider::refresh);
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return contextObject instanceof ResourceFile;
+			}
+		};
+		keyBindingAction.setPopupMenuData(new MenuData(new String[] { "Assign Key Binding" },
+			ResourceManager.loadImage("images/key.png"), null));
+		keyBindingAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/key.png"), null));
 
-		showBundleStatusAction = createScriptTableAction("Script Directories",
-			"Manage Script Directories", ResourceManager.loadImage("images/text_list_bullets.png"),
-			provider::showBundleStatusComponent);
+		keyBindingAction.setDescription("Assign Key Binding");
+		keyBindingAction.setEnabled(false);
+		plugin.getTool().addLocalAction(provider, keyBindingAction);
 
-		Icon icon = ResourceManager.loadImage("images/red-cross.png");
-		Predicate<ActionContext> test = context -> {
-			Object contextObject = context.getContextObject();
-			return (contextObject instanceof GTable) || (contextObject instanceof ResourceFile);
+		deleteAction = new DockingAction("Delete", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.deleteScript();
+			}
+
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return contextObject instanceof ResourceFile;
+			}
+		};
+		deleteAction.setPopupMenuData(new MenuData(new String[] { "Delete" },
+			ResourceManager.loadImage("images/edit-delete.png"), null));
+		deleteAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/edit-delete.png"), null));
+
+		deleteAction.setDescription("Delete Script");
+		deleteAction.setEnabled(false);
+		plugin.getTool().addLocalAction(provider, deleteAction);
+
+		renameAction = new DockingAction("Rename", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.renameScript();
+			}
+
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return contextObject instanceof ResourceFile;
+			}
+		};
+		renameAction.setPopupMenuData(new MenuData(new String[] { "Rename" },
+			ResourceManager.loadImage("images/textfield_rename.png"), null));
+		renameAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/textfield_rename.png"), null));
+
+		renameAction.setDescription("Rename Script");
+		renameAction.setEnabled(false);
+		plugin.getTool().addLocalAction(provider, renameAction);
+
+		newAction = new DockingAction("New", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.newScript();
+			}
+
+			@Override
+			public boolean isAddToPopup(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return (contextObject instanceof GTable) || (contextObject instanceof ResourceFile);
+			}
+		};
+		newAction.setPopupMenuData(new MenuData(new String[] { "New" },
+			ResourceManager.loadImage("images/script_add.png"), null));
+		newAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/script_add.png"), null));
+
+		newAction.setDescription("Create New Script");
+		newAction.setEnabled(true);
+		plugin.getTool().addLocalAction(provider, newAction);
+
+		refreshAction = new DockingAction("Refresh", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				GhidraScriptUtil.refreshRequested();
+				provider.refresh();
+			}
+
+			@Override
+			public boolean isAddToPopup(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return (contextObject instanceof GTable) || (contextObject instanceof ResourceFile);
+			}
+		};
+		refreshAction.setPopupMenuData(
+			new MenuData(new String[] { "Refresh" }, Icons.REFRESH_ICON, null));
+		refreshAction.setToolBarData(new ToolBarData(Icons.REFRESH_ICON, null));
+
+		refreshAction.setDescription("Refresh Script List");
+		refreshAction.setEnabled(true);
+		plugin.getTool().addLocalAction(provider, refreshAction);
+
+		scriptDirsAction = new DockingAction("Script Directories", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				provider.pickPaths();
+			}
+
+			@Override
+			public boolean isAddToPopup(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return (contextObject instanceof GTable) || (contextObject instanceof ResourceFile);
+			}
+		};
+		scriptDirsAction.setPopupMenuData(new MenuData(new String[] { "Script Directories" },
+			ResourceManager.loadImage("images/text_list_bullets.png"), null));
+		scriptDirsAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/text_list_bullets.png"), null));
+
+		scriptDirsAction.setDescription("Script Directories");
+		scriptDirsAction.setEnabled(true);
+		plugin.getTool().addLocalAction(provider, scriptDirsAction);
+
+		helpAction = new DockingAction("Ghidra API Help", plugin.getName()) {
+			@Override
+			public void actionPerformed(ActionContext context) {
+				showGhidraScriptJavadoc();
+			}
+
+			@Override
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return (contextObject instanceof GTable) || (contextObject instanceof ResourceFile);
+			}
+
+			@Override
+			public boolean isAddToPopup(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				return (contextObject instanceof GTable) || (contextObject instanceof ResourceFile);
+			}
 		};
 
-		new ActionBuilder("Ghidra API Help", plugin.getName()).popupMenuPath("Ghidra API Help")
-				.popupMenuIcon(icon)
-				.popupWhen(test)
-				.toolBarIcon(icon)
-				.toolBarGroup(null)
-				.description("Help")
-				.helpLocation(new HelpLocation(plugin.getName(), "Help"))
-				.enabledWhen(test)
-				.onAction(context -> showGhidraScriptJavadoc())
-				.buildAndInstallLocal(provider);
+		helpAction.setPopupMenuData(new MenuData(new String[] { "Ghidra API Help" },
+			ResourceManager.loadImage("images/red-cross.png"), null));
+		helpAction.setToolBarData(
+			new ToolBarData(ResourceManager.loadImage("images/red-cross.png"), null));
 
-		// XXX In order to override a method of the new DockingAction and use the builder, we
-		// need to override the build method of the ActionBuilder.  When the ActionBuilder is 
-		// updated, this code can be cleaned up.
-		new ActionBuilder("Ghidra API Help", plugin.getName()) {
+		helpAction.setDescription("Help");
+		helpAction.setEnabled(true);
+		helpAction.setHelpLocation(new HelpLocation(plugin.getName(), "Help"));
+		plugin.getTool().addLocalAction(provider, helpAction);
+
+		DockingAction globalHelpAction = new DockingAction("Ghidra API Help", plugin.getName()) {
 			@Override
-			public DockingAction build() {
-				validate();
-				DockingAction action = new DockingAction(name, owner, keyBindingType) {
-					@Override
-					public void actionPerformed(ActionContext context) {
-						actionCallback.accept(context);
-					}
-
-					@Override
-					public boolean shouldAddToWindow(boolean isMainWindow,
-							Set<Class<?>> contextTypes) {
-						return true;
-					}
-				};
-				decorateAction(action);
-				return action;
+			public void actionPerformed(ActionContext context) {
+				showGhidraScriptJavadoc();
 			}
-		}.menuGroup(ToolConstants.HELP_CONTENTS_MENU_GROUP)
-				.menuPath(ToolConstants.MENU_HELP, "Ghidra API Help")
-				.helpLocation(new HelpLocation("Misc", "Welcome_to_Ghidra_Help"))
-				.onAction(context -> showGhidraScriptJavadoc())
-				.buildAndInstall(plugin.getTool());
+
+			@Override
+			public boolean shouldAddToWindow(boolean isMainWindow, Set<Class<?>> contextTypes) {
+				return true;
+			}
+		};
+		globalHelpAction.setEnabled(true);
+		globalHelpAction.setHelpLocation(new HelpLocation("Misc", "Welcome_to_Ghidra_Help"));
+		globalHelpAction.setMenuBarData(
+			new MenuData(new String[] { ToolConstants.MENU_HELP, "Ghidra API Help" }, null,
+				ToolConstants.HELP_CONTENTS_MENU_GROUP));
+		plugin.getTool().addAction(globalHelpAction);
+
 	}
 
 	private void showGhidraScriptJavadoc() {
@@ -306,7 +438,7 @@ class GhidraScriptActionManager {
 	}
 
 	HelpLocation getPathHelpLocation() {
-		return new HelpLocation(plugin.getName(), showBundleStatusAction.getName());
+		return new HelpLocation(plugin.getName(), scriptDirsAction.getName());
 	}
 
 	HelpLocation getKeyBindingHelpLocation() {
@@ -394,17 +526,15 @@ class GhidraScriptActionManager {
 			}
 
 			File versionedExtractDir = new File(extractDir, version);
-			try (ZipFile zipFileObject = new ZipFile(zipFile)) {
+			try (ZipFile zf = new ZipFile(zipFile)) {
 
 				// Check to see if zip file has been extracted already
 				if (versionedExtractDir.exists()) {
 
 					// Open Javadoc if all the files are present
-					try (Stream<Path> walk = Files.walk(versionedExtractDir.toPath())) {
-						if (zipFileObject.size() + 1 == walk.count()) {
-							launchJavadoc();
-							return;
-						}
+					if (zf.size() + 1 == Files.walk(versionedExtractDir.toPath()).count()) {
+						launchJavadoc();
+						return;
 					}
 
 					// Delete corrupted directory and continue
@@ -412,9 +542,9 @@ class GhidraScriptActionManager {
 				}
 
 				monitor.setMessage("Preparing to extract Ghidra API javadoc...");
-				monitor.initialize(zipFileObject.size());
+				monitor.initialize(zf.size());
 
-				Enumeration<? extends ZipEntry> entries = zipFileObject.entries();
+				Enumeration<? extends ZipEntry> entries = zf.entries();
 				while (entries.hasMoreElements()) {
 					if (monitor.isCancelled()) {
 						cleanup(monitor, versionedExtractDir);
@@ -423,7 +553,7 @@ class GhidraScriptActionManager {
 
 					ZipEntry entry = entries.nextElement();
 					monitor.setMessage("Extracting " + entry.getName() + "...");
-					writeZipEntry(versionedExtractDir, entry, zipFileObject.getInputStream(entry));
+					writeZipEntry(versionedExtractDir, entry, zf.getInputStream(entry));
 					monitor.incrementProgress(1);
 				}
 
@@ -445,10 +575,10 @@ class GhidraScriptActionManager {
 		}
 
 		private void launchJavadoc() {
-			URI uri = entryFile.toURI();
-			URL url = null;
+			URI URI = entryFile.toURI();
+			URL URL = null;
 			try {
-				url = uri.toURL();
+				URL = URI.toURL();
 			}
 			catch (MalformedURLException e) {
 				// shouldn't happen
@@ -458,7 +588,7 @@ class GhidraScriptActionManager {
 				return;
 			}
 
-			BrowserLoader.display(url, url, plugin.getTool());
+			BrowserLoader.display(URL, URL, plugin.getTool());
 		}
 
 		private void writeZipEntry(File unzipDirectory, ZipEntry entry, InputStream inputStream)

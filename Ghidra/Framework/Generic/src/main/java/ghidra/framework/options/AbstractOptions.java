@@ -296,156 +296,86 @@ public abstract class AbstractOptions implements Options {
 	public boolean getBoolean(String optionName, boolean defaultValue) {
 		Option option =
 			getOption(optionName, OptionType.BOOLEAN_TYPE, Boolean.valueOf(defaultValue));
-		try {
-			return (Boolean) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Boolean) option.getValue(defaultValue);
 	}
 
 	@Override
 	public byte[] getByteArray(String optionName, byte[] defaultValue) {
 		Option option = getOption(optionName, OptionType.BYTE_ARRAY_TYPE, defaultValue);
-		try {
-			return (byte[]) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (byte[]) option.getValue(defaultValue);
 	}
 
 	@Override
 	public int getInt(String optionName, int defaultValue) {
 		Option option = getOption(optionName, OptionType.INT_TYPE, defaultValue);
-		try {
-			return (Integer) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Integer) option.getValue(defaultValue);
 	}
 
 	@Override
 	public double getDouble(String optionName, double defaultValue) {
 		Option option = getOption(optionName, OptionType.DOUBLE_TYPE, defaultValue);
-		try {
-			return (Double) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Double) option.getValue(defaultValue);
 	}
 
 	@Override
 	public float getFloat(String optionName, float defaultValue) {
 		Option option = getOption(optionName, OptionType.FLOAT_TYPE, defaultValue);
-		try {
-			return (Float) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Float) option.getValue(defaultValue);
 	}
 
 	@Override
 	public long getLong(String optionName, long defaultValue) {
 		Option option = getOption(optionName, OptionType.LONG_TYPE, defaultValue);
-		try {
-			return (Long) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Long) option.getValue(defaultValue);
 	}
 
 	@Override
 	public CustomOption getCustomOption(String optionName, CustomOption defaultValue) {
 		Option option = getOption(optionName, OptionType.CUSTOM_TYPE, defaultValue);
-		try {
-			return (CustomOption) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (CustomOption) option.getValue(defaultValue);
 	}
 
 	@Override
 	public Color getColor(String optionName, Color defaultValue) {
 		Option option = getOption(optionName, OptionType.COLOR_TYPE, defaultValue);
-		try {
-			return (Color) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Color) option.getValue(defaultValue);
 	}
 
 	@Override
 	public File getFile(String optionName, File defaultValue) {
 		Option option = getOption(optionName, OptionType.FILE_TYPE, defaultValue);
-		try {
-			return (File) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (File) option.getValue(defaultValue);
 	}
 
 	@Override
 	public Font getFont(String optionName, Font defaultValue) {
 		Option option = getOption(optionName, OptionType.FONT_TYPE, defaultValue);
-		try {
 		return (Font) option.getValue(defaultValue);
-	}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
 	}
 
 	@Override
 	public Date getDate(String optionName, Date defaultValue) {
 		Option option = getOption(optionName, OptionType.DATE_TYPE, defaultValue);
-		try {
-			return (Date) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (Date) option.getValue(defaultValue);
 	}
 
 	@Override
 	public KeyStroke getKeyStroke(String optionName, KeyStroke defaultValue) {
 		Option option = getOption(optionName, OptionType.KEYSTROKE_TYPE, defaultValue);
-		try {
-			return (KeyStroke) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (KeyStroke) option.getValue(defaultValue);
 	}
 
 	@Override
 	public String getString(String optionName, String defaultValue) {
 		Option option = getOption(optionName, OptionType.STRING_TYPE, defaultValue);
-		try {
-			return (String) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (String) option.getValue(defaultValue);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends Enum<T>> T getEnum(String optionName, T defaultValue) {
 		Option option = getOption(optionName, OptionType.ENUM_TYPE, defaultValue);
-		try {
-			return (T) option.getValue(defaultValue);
-		}
-		catch (ClassCastException e) {
-			return defaultValue;
-		}
+		return (T) option.getValue(defaultValue);
 	}
 
 	@Override

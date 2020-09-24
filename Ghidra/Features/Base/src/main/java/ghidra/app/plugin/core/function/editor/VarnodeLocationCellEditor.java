@@ -172,8 +172,8 @@ class VarnodeLocationCellEditor extends AbstractCellEditor implements TableCellE
 
 	private Component createRegisterCombo(VarnodeInfo varnode) {
 		ProgramContext programContext = program.getProgramContext();
-
-		List<Register> validItems = new ArrayList<>(programContext.getRegisters());
+		Register[] contextRegisters = programContext.getRegisters();
+		List<Register> validItems = new ArrayList<>(Arrays.asList(contextRegisters));
 
 		for (Iterator<Register> iter = validItems.iterator(); iter.hasNext();) {
 			Register register = iter.next();

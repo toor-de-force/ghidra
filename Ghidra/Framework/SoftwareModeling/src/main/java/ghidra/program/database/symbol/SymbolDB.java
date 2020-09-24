@@ -558,7 +558,8 @@ public abstract class SymbolDB extends DatabaseObject implements Symbol {
 				newName = "";
 			}
 			else {
-				SymbolUtilities.validateName(newName);
+				SymbolUtilities.validateName(newName, address, getSymbolType(),
+					symbolMgr.getAddressMap().getAddressFactory());
 				nameChange = !oldName.equals(newName);
 				if (!namespaceChange && !nameChange) {
 					return;

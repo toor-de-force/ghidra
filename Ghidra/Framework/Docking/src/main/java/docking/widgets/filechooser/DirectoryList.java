@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.*;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
 import docking.event.mouse.GMouseListenerAdapter;
 import docking.widgets.AutoLookup;
@@ -35,10 +37,12 @@ import ghidra.util.exception.AssertException;
 
 class DirectoryList extends GList<File> implements GhidraFileChooserDirectoryModelIf {
 	private static final int DEFAULT_ICON_SIZE = 16;
-	private static final int MIN_HEIGHT_PADDING = 5;
+	private static final int WIDTH_PADDING = 14;
+	private static final int HEIGHT_PADDING = 5;
 
 	private GhidraFileChooser chooser;
 	private DirectoryListModel model;
+	private FileListCellRenderer cellRenderer;
 	private JLabel listEditorLabel;
 	private JTextField listEditorField;
 	private JPanel listEditor;
@@ -46,41 +50,35 @@ class DirectoryList extends GList<File> implements GhidraFileChooserDirectoryMod
 	/** The file being edited */
 	private File editedFile;
 
-	/**
-	 * Create a new DirectoryList instance.
-	 * 
-	 * @param chooser the {@link GhidraFileChooser} this instance is nested in
-	 * @param model the {@link DirectoryListModel}
-	 * @param font the parent component's font, used to calculate row height in the list once
-	 */
-	DirectoryList(GhidraFileChooser chooser, DirectoryListModel model, Font font) {
+	DirectoryList(GhidraFileChooser chooser, DirectoryListModel model) {
 		super(model);
 		this.chooser = chooser;
 		this.model = model;
-		build(font);
+		build();
 	}
 
-	private void build(Font font) {
+	private void build() {
 
 		setLayoutOrientation(JList.VERTICAL_WRAP);
-
-		FileListCellRenderer cellRenderer = new FileListCellRenderer(chooser);
+		cellRenderer = new FileListCellRenderer(getFont(), chooser);
 		setCellRenderer(cellRenderer);
+		model.addListDataListener(new ListDataListener() {
+			@Override
+			public void contentsChanged(ListDataEvent e) {
+				// called when the list changes because a new file is inserted (ie. create new folder action)
+				recomputeListCellDimensions(null);
+			}
 
-		// Enable the list to calculate the width of the cells on its own, but manually
-		// specify the height to ensure some padding between rows.
-		// We need the parent component's Font instead of using our
-		// own #getFont() because we are not a child of the parent yet and
-		// the font may be set to something other than the default.
-		// Use 1/3 of the line height of the font to ensure visually consistent
-		// padding between rows.  (historically, 5px was used as the padding
-		// between the default 12pt (15px lineht) rows, so 15px lineht/5px padding
-		// equals .333 ratio.) 
-		FontMetrics metrics = cellRenderer.getFontMetrics(font);
-		setFixedCellHeight(
-			Math.max(metrics.getHeight(), DEFAULT_ICON_SIZE) +
-				Math.max(metrics.getHeight() / 3, MIN_HEIGHT_PADDING));
-		setFixedCellWidth(-1);
+			@Override
+			public void intervalAdded(ListDataEvent e) {
+				recomputeListCellDimensions(null);
+			}
+
+			@Override
+			public void intervalRemoved(ListDataEvent e) {
+				// don't care
+			}
+		});
 
 		addMouseListener(new GMouseListenerAdapter() {
 			@Override
@@ -392,6 +390,36 @@ class DirectoryList extends GList<File> implements GhidraFileChooserDirectoryMod
 		else {
 			chooser.setStatusText("Unable to rename " + editedFileCopy);
 		}
+	}
+
+	/**
+	 * Resizes this list's cell dimensions based on the string widths found in the supplied
+	 * list of files.
+	 * <p>
+	 * If there there are no files, uses the JScrollPane that contains us for the cellwidth.
+	 *  
+	 * @param files list of files to use to resize the list's fixed cell dimensions.  If null, uses
+	 * the model's current set of files.
+	 */
+	private void recomputeListCellDimensions(List<File> files) {
+		files = (files != null) ? files : model.getAllFiles();
+		Dimension d =
+			cellRenderer.computePlainTextListCellDimensions(this, files, 0, DEFAULT_ICON_SIZE);
+		if (d.width == 0 && getParent() != null) {
+			// special case: if there were no files to measure, use the containing JScrollPane's
+			// width
+			if (getParent().getParent() instanceof JScrollPane) {
+				JScrollPane parent = (JScrollPane) getParent().getParent();
+				Dimension parentSize = parent.getSize();
+				Insets insets = parent.getInsets();
+				d.width = parentSize.width - (insets != null ? insets.right + insets.left : 0);
+			}
+		}
+		else {
+			d.width += DEFAULT_ICON_SIZE + WIDTH_PADDING;
+		}
+		setFixedCellWidth(d.width);
+		setFixedCellHeight(d.height + HEIGHT_PADDING);
 	}
 
 	/*junit*/ JTextField getListEditorText() {

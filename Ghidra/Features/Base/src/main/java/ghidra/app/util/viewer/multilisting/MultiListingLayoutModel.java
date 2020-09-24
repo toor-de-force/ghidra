@@ -314,11 +314,6 @@ public class MultiListingLayoutModel implements ListingModelListener, FormatMode
 			return models[modelID].adjustAddressSetToCodeUnitBoundaries(addressSet);
 		}
 
-		@Override
-		public ListingModel copy() {
-			return models[modelID].copy();
-		}
-
 	}
 
 	/**

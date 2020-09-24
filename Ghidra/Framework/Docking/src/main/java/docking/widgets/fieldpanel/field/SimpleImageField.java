@@ -180,7 +180,7 @@ public class SimpleImageField implements Field {
 
 	@Override
 	public void paint(JComponent c, Graphics g, PaintContext context,
-			Rectangle clip, FieldBackgroundColorManager map, RowColLocation cursorLoc, int rowHeight) {
+			FieldBackgroundColorManager map, RowColLocation cursorLoc, int rowHeight) {
 		if (icon == null) {
 			return;
 		}

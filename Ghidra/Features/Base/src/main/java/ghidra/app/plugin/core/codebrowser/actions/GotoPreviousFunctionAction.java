@@ -23,9 +23,8 @@ import javax.swing.KeyStroke;
 import docking.action.KeyBindingData;
 import docking.action.MenuData;
 import docking.tool.ToolConstants;
-import ghidra.app.context.NavigatableActionContext;
-import ghidra.app.context.NavigatableContextAction;
 import ghidra.app.nav.Navigatable;
+import ghidra.app.plugin.core.codebrowser.CodeViewerActionContext;
 import ghidra.app.services.GoToService;
 import ghidra.app.util.HelpTopics;
 import ghidra.framework.plugintool.PluginTool;
@@ -34,7 +33,7 @@ import ghidra.program.model.listing.*;
 import ghidra.program.util.FunctionSignatureFieldLocation;
 import ghidra.util.HelpLocation;
 
-public class GotoPreviousFunctionAction extends NavigatableContextAction {
+public class GotoPreviousFunctionAction extends CodeViewerContextAction {
 
 	private PluginTool tool;
 
@@ -68,7 +67,7 @@ public class GotoPreviousFunctionAction extends NavigatableContextAction {
 	}
 
 	@Override
-	protected void actionPerformed(NavigatableActionContext context) {
+	protected void actionPerformed(CodeViewerActionContext context) {
 		Address address = context.getAddress();
 		Program program = context.getProgram();
 		Function function = getPreviousFunction(program, address);

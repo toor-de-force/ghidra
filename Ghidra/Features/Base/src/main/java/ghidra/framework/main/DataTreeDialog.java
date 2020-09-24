@@ -32,6 +32,7 @@ import docking.widgets.label.GDLabel;
 import docking.widgets.label.GLabel;
 import docking.widgets.tree.support.GTreeSelectionEvent;
 import docking.widgets.tree.support.GTreeSelectionListener;
+import ghidra.framework.main.datatree.ClearCutAction;
 import ghidra.framework.main.datatree.ProjectDataTreePanel;
 import ghidra.framework.main.projectdata.actions.*;
 import ghidra.framework.model.*;
@@ -84,11 +85,19 @@ public class DataTreeDialog extends DialogComponentProvider
 	private boolean cancelled = false;
 	private String pendingNameText;
 	private DomainFolder pendingDomainFolder;
-
+	private ProjectDataCutAction cutAction;
+	private ClearCutAction clearCutAction;
+	private ProjectDataCopyAction copyAction;
+	private ProjectDataPasteAction pasteAction;
+	private ProjectDataRenameAction renameAction;
+	private ProjectDataOpenDefaultToolAction openAction;
 	private ProjectDataExpandAction expandAction;
 	private ProjectDataCollapseAction collapseAction;
+	private ProjectDataSelectAction selectAction;
+	private ProjectDataReadOnlyAction readOnlyAction;
+	private ProjectDataRefreshAction refreshAction;
 	private ProjectDataNewFolderAction newFolderAction;
-
+	private ProjectDataDeleteAction deleteAction;
 	private Integer treeSelectionMode;
 
 	/**
@@ -158,17 +167,51 @@ public class DataTreeDialog extends DialogComponentProvider
 
 	private void createActions() {
 		String owner = "DataTreeDialogActions";
-
 		String groupName = "Cut/copy/paste/new";
-		newFolderAction = new DialogProjectDataNewFolderAction(owner, groupName);
+
+		newFolderAction = new ProjectDataNewFolderAction(owner, groupName);
+
+		cutAction = new ProjectDataCutAction(owner, groupName);
+
+		clearCutAction = new ClearCutAction(owner);
+
+		copyAction = new ProjectDataCopyAction(owner, groupName);
+
+		pasteAction = new ProjectDataPasteAction(owner, groupName);
+
+		groupName = "Delete/Rename";
+		renameAction = new ProjectDataRenameAction(owner, groupName);
+
+		deleteAction = new ProjectDataDeleteAction(owner, groupName);
+
+		openAction = new ProjectDataOpenDefaultToolAction(owner, "Delete/Rename");
 
 		groupName = "Expand/Collapse";
-		expandAction = new DialogProjectDataExpandAction(owner, groupName);
-		collapseAction = new DialogProjectDataCollapseAction(owner, groupName);
+		expandAction = new ProjectDataExpandAction(owner, groupName);
+
+		collapseAction = new ProjectDataCollapseAction(owner, groupName);
+
+		groupName = "Select/Toggle";
+		selectAction = new ProjectDataSelectAction(owner, groupName);
+
+		readOnlyAction = new ProjectDataReadOnlyAction(owner, groupName);
+
+		groupName = "XRefresh";
+		refreshAction = new ProjectDataRefreshAction(owner, groupName);
 
 		addAction(newFolderAction);
+		addAction(cutAction);
+		addAction(clearCutAction);
+		addAction(copyAction);
+		addAction(pasteAction);
+		addAction(deleteAction);
+		addAction(openAction);
+		addAction(renameAction);
 		addAction(expandAction);
 		addAction(collapseAction);
+		addAction(selectAction);
+		addAction(readOnlyAction);
+		addAction(refreshAction);
 	}
 
 	/**

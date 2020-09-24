@@ -25,32 +25,45 @@ public abstract class NavigatableContextAction extends DockingAction {
 
 	public NavigatableContextAction(String name, String owner) {
 		super(name, owner);
-		setSupportsDefaultToolContext(true);
 	}
 
 	public NavigatableContextAction(String name, String owner, KeyBindingType type) {
 		super(name, owner, type);
-		setSupportsDefaultToolContext(true);
 	}
 
 	@Override
 	public boolean isEnabledForContext(ActionContext context) {
-		if (context instanceof NavigatableActionContext) {
-			return isEnabledForContext((NavigatableActionContext) context);
+		NavigatableActionContext appropriateContext = getAppropriateContext(context);
+		if (appropriateContext == null) {
+			return false;
 		}
-		return false;
+		return isEnabledForContext(appropriateContext);
 	}
 
 	@Override
 	public void actionPerformed(ActionContext context) {
-		if (context instanceof NavigatableActionContext) {
-			actionPerformed((NavigatableActionContext) context);
+		actionPerformed(getAppropriateContext(context));
+	}
+
+	private NavigatableActionContext getAppropriateContext(ActionContext context) {
+		if (context instanceof NavigatableActionContext &&
+			isValidNavigationContext((NavigatableActionContext) context)) {
+			return (NavigatableActionContext) context;
 		}
+		ActionContext globalContext = context.getGlobalContext();
+		if (globalContext instanceof NavigatableActionContext) {
+			return (NavigatableActionContext) globalContext;
+		}
+		return null;
 	}
 
 	@Override
 	public final boolean isValidContext(ActionContext context) {
-		return context instanceof NavigatableActionContext;
+		return true;
+	}
+
+	protected boolean isValidNavigationContext(NavigatableActionContext context) {
+		return true;
 	}
 
 	@Override

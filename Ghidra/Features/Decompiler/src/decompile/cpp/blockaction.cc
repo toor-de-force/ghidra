@@ -2170,7 +2170,7 @@ int4 ActionFinalStructure::apply(Funcdata &data)
   BlockGraph &graph(data.getStructure());
 
   graph.orderBlocks();
-  graph.finalizePrinting(data);
+  graph.orderSwitchCases();
   graph.scopeBreak(-1,-1);	// Put in \e break statements
   graph.markUnstructured();	// Put in \e gotos
   graph.markLabelBumpUp(false); // Fix up labeling

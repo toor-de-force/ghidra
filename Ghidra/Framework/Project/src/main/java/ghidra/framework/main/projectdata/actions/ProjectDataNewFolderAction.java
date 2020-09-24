@@ -15,71 +15,76 @@
  */
 package ghidra.framework.main.projectdata.actions;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.Icon;
+import javax.swing.SwingUtilities;
 
-import docking.action.ContextSpecificAction;
 import docking.action.MenuData;
 import docking.widgets.tree.GTreeNode;
-import ghidra.framework.main.datatable.ProjectTreeContext;
+import ghidra.framework.main.datatable.ProjectDataActionContext;
+import ghidra.framework.main.datatable.ProjectDataContextAction;
 import ghidra.framework.main.datatree.DataTree;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.DomainFolder;
-import ghidra.util.InvalidNameException;
-import ghidra.util.Swing;
-import ghidra.util.exception.AssertException;
+import ghidra.util.Msg;
 import resources.ResourceManager;
 
-public class ProjectDataNewFolderAction<T extends ProjectTreeContext> extends ContextSpecificAction<T> {
+public class ProjectDataNewFolderAction extends ProjectDataContextAction {
 
 	private static Icon icon = ResourceManager.loadImage("images/folder_add.png");
 
-	public ProjectDataNewFolderAction(String owner, String group, Class<T> contextClass) {
-		super("New Folder", owner, contextClass);
+	public ProjectDataNewFolderAction(String owner, String group) {
+		super("New Folder", owner);
 		setPopupMenuData(new MenuData(new String[] { "New Folder" }, icon, group));
 		markHelpUnnecessary();
 	}
 
 	@Override
-	protected void actionPerformed(T context) {
+	protected boolean supportsTransientProjectData() {
+		// we allow the user to create new folders even in transient projects
+		return true;
+	}
+
+	@Override
+	protected void actionPerformed(ProjectDataActionContext context) {
 		createNewFolder(context);
 	}
 
 	@Override
-	public boolean isAddToPopup(T context) {
-		return (context.getFolderCount() + context.getFileCount()) == 1;
+	public boolean isAddToPopup(ProjectDataActionContext context) {
+		Object contextObject = context.getContextObject();
+		if (!(contextObject instanceof GTreeNode)) {
+			return false;
+		}
+		if (!context.isInActiveProject()) {
+			return false;
+		}
+		return context.hasExactlyOneFileOrFolder();
 	}
 
 	/**
 	 * Create a new folder for the selected node that represents
 	 * a folder.
 	 */
-	private void createNewFolder(T context) {
-		DomainFolder parentFolder = getFolder(context);
-
-		DomainFolder newFolder = createNewFolderWithDefaultName(parentFolder);
-		DataTree tree = context.getTree();
-
-		Swing.runLater(() -> {
-			GTreeNode node = findNodeForFolder(tree, newFolder);
-			if (node != null) {
-				tree.setEditable(true);
-				tree.startEditing(node.getParent(), node.getName());
-			}
-		});
-
-	}
-
-	private DomainFolder createNewFolderWithDefaultName(DomainFolder parentFolder) {
-		String name = getNewFolderName(parentFolder);
+	private void createNewFolder(ProjectDataActionContext context) {
+		DomainFolder folder = getFolder(context);
+		String name = getNewFolderName(folder);
 		try {
-			return parentFolder.createFolder(name);
+			final DomainFolder newFolder = folder.createFolder(name);
+			final DataTree tree = (DataTree) context.getComponent();
+			SwingUtilities.invokeLater(() -> {
+				GTreeNode node = findNodeForFolder(tree, newFolder);
+				if (node != null) {
+					tree.setEditable(true);
+					tree.startEditing(node.getParent(), node.getName());
+				}
+			});
+
 		}
-		catch (InvalidNameException | IOException e) {
-			throw new AssertException("Unexpected Error creating new folder: "+name, e);
+		catch (Exception e) {
+			Msg.showError(this, context.getComponent(), "Create Folder Failed", e.getMessage());
 		}
 	}
 
@@ -118,7 +123,7 @@ public class ProjectDataNewFolderAction<T extends ProjectTreeContext> extends Co
 		return name;
 	}
 
-	private DomainFolder getFolder(T context) {
+	private DomainFolder getFolder(ProjectDataActionContext context) {
 		// the following code relies on the isAddToPopup to ensure that there is exactly one
 		// file or folder selected
 		if (context.getFolderCount() > 0) {

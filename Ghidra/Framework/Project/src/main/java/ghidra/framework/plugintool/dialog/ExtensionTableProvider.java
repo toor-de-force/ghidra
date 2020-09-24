@@ -123,12 +123,7 @@ public class ExtensionTableProvider extends DialogComponentProvider {
 				// Don't let the user attempt to install anything if they don't have write
 				// permissions on the installation dir.
 				ResourceFile installDir =
-					Application.getApplicationLayout().getExtensionInstallationDirs().get(0);
-				if (!installDir.exists() && !installDir.mkdir()) {
-					Msg.showError(this, null, "Directory Error",
-						"Cannot install/uninstall extensions: Failed to create extension installation directory.\n" +
-							"See the \"Ghidra Extension Notes\" section of the Ghidra Installation Guide for more information.");
-				}
+					Application.getApplicationLayout().getExtensionInstallationDir();
 				if (!installDir.canWrite()) {
 					Msg.showError(this, null, "Permissions Error",
 						"Cannot install/uninstall extensions: Invalid write permissions on installation directory.\n" +

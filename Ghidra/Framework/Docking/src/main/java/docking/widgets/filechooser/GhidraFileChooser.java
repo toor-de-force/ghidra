@@ -572,7 +572,7 @@ public class GhidraFileChooser extends DialogComponentProvider
 
 	private JScrollPane buildDirectoryList() {
 		directoryListModel = new DirectoryListModel();
-		directoryList = new DirectoryList(this, directoryListModel, rootPanel.getFont());
+		directoryList = new DirectoryList(this, directoryListModel);
 		directoryList.setName("LIST");
 		directoryList.setBackground(BACKGROUND_COLOR);
 
@@ -1702,13 +1702,8 @@ public class GhidraFileChooser extends DialogComponentProvider
 	void userSelectedFiles(List<File> files) {
 		selectedFiles.setFiles(files);
 
-		// Update the display to...
-		if (isMultiSelectionEnabled() && selectedFiles.size() > 1) {
-			// clear the filename text field when multiple files are selected
-			filenameTextField.setText("");
-		}
-		else {
-			// set the filename text on single selection, regardless of mode
+		// Update the display when we are in single selection mode
+		if (!isMultiSelectionEnabled()) {
 			updateTextFieldForFile(selectedFiles.getFile());
 		}
 	}

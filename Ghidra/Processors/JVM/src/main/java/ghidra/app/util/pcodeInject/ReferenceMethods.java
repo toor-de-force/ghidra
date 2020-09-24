@@ -48,293 +48,302 @@ public class ReferenceMethods {
 
 	/**
 	 * Generate a String of pcode for a getstatic op.
-	 * @param pCode is the pcode accumulator
 	 * @param index - the index of the field reference in the constant pool
 	 * @param constantPool - the constant pool of the class file
+	 * @return - the pcode string
 	 */
-	public static void getPcodeForGetStatic(PcodeOpEmitter pCode, int index,
+	public static String getPcodeForGetStatic(int index,
 			AbstractConstantPoolInfoJava[] constantPool) {
+		StringBuilder pCode = new StringBuilder();
 		//determine the computational category and push a value of the correct size onto the operand stack
 		String descriptor = getDescriptorForFieldRef(constantPool, index);
 
 		switch (descriptor.charAt(0)) {
 			case DescriptorDecoder.BASE_TYPE_BYTE:  //signed byte
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 1,
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 1,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETSTATIC);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 1, TEMP_1);
-				pCode.emitSignExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 1, TEMP_1);
+				PcodeTextEmitter.emitSignExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_BOOLEAN:  //boolean
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 1,
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 1,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETSTATIC);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 1, TEMP_1);
-				pCode.emitZeroExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 1, TEMP_1);
+				PcodeTextEmitter.emitZeroExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_CHAR:  //char
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 2,
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 2,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETSTATIC);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 2, TEMP_1);
-				pCode.emitZeroExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 2, TEMP_1);
+				PcodeTextEmitter.emitZeroExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_SHORT:  //signed short
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 2,
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 2,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETSTATIC);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 2, TEMP_1);
-				pCode.emitSignExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 2, TEMP_1);
+				PcodeTextEmitter.emitSignExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_ARRAY:  //array dimension
 			case DescriptorDecoder.BASE_TYPE_FLOAT:  //float
 			case DescriptorDecoder.BASE_TYPE_INT:  //int
 			case DescriptorDecoder.BASE_TYPE_REFERENCE:  //object reference
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 4,
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETSTATIC);
-				pCode.emitAssignVarnodeFromDereference(VALUE, 4, TEMP_1);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, VALUE, 4, TEMP_1);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_DOUBLE:  //double
 			case DescriptorDecoder.BASE_TYPE_LONG:  //long
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 8,
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 8,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETSTATIC);
-				pCode.emitAssignVarnodeFromDereference(VALUE, 8, TEMP_1);
-				pCode.emitPushCat2Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, VALUE, 8, TEMP_1);
+				PcodeTextEmitter.emitPushCat2Value(pCode, VALUE);
 				break;
 			default:
 				throw new IllegalArgumentException("Invalid descriptor: " + descriptor);
 		}
+		return pCode.toString();
 	}
 
 	/**
 	 * Generate a String of pcode for a putstatic op.
-	 * @param pCode is the pcode accumulator
 	 * @param index - the index of the field reference in the constant pool
 	 * @param constantPool - the constant pool of the class file
+	 * @return - the pcode string
 	 */
-	public static void getPcodeForPutStatic(PcodeOpEmitter pCode, int index,
+	public static String getPcodeForPutStatic(int index,
 			AbstractConstantPoolInfoJava[] constantPool) {
+		StringBuilder pCode = new StringBuilder();
 		String descriptor = getDescriptorForFieldRef(constantPool, index);
 
 		switch (descriptor.charAt(0)) {
 			case DescriptorDecoder.BASE_TYPE_BYTE:  //signed byte
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitAssignVarnodeFromPcodeOpCall(STATIC_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, STATIC_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTSTATIC);
-				pCode.emitTruncate(TEMP_1, 1, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 1, STATIC_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 1, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 1, STATIC_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_BOOLEAN:  //boolean
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitAssignVarnodeFromPcodeOpCall(STATIC_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, STATIC_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTSTATIC);
-				pCode.emitTruncate(TEMP_1, 1, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 1, STATIC_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 1, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 1, STATIC_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_CHAR:  //char
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitAssignVarnodeFromPcodeOpCall(STATIC_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, STATIC_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTSTATIC);
-				pCode.emitTruncate(TEMP_1, 2, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 2, STATIC_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 2, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 2, STATIC_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_SHORT:  //signed short
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitAssignVarnodeFromPcodeOpCall(STATIC_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, STATIC_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTSTATIC);
-				pCode.emitTruncate(TEMP_1, 2, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 2, STATIC_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 2, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 2, STATIC_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_ARRAY:  //array dimension
 			case DescriptorDecoder.BASE_TYPE_FLOAT:  //float
 			case DescriptorDecoder.BASE_TYPE_INT:  //int
 			case DescriptorDecoder.BASE_TYPE_REFERENCE:  //object reference
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitAssignVarnodeFromPcodeOpCall(STATIC_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, STATIC_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTSTATIC);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 4, STATIC_OFFSET,
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 4, STATIC_OFFSET,
 					NEW_VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_DOUBLE:  //double
 			case DescriptorDecoder.BASE_TYPE_LONG:  //long
-				pCode.emitPopCat2Value(NEW_VALUE);
-				pCode.emitAssignVarnodeFromPcodeOpCall(STATIC_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat2Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, STATIC_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, "0", Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTSTATIC);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 8, STATIC_OFFSET,
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 8, STATIC_OFFSET,
 					NEW_VALUE);
 				break;
 			default:
 				throw new IllegalArgumentException("Invalid descriptor: " + descriptor);
 		}
+		return pCode.toString();
 	}
 
 	/**
 	 * Generate pcode for a getfield op
-	 * @param pCode is the pcode accumulator
 	 * @param index - the index of the field reference in the constant pool
 	 * @param constantPool
+	 * @return - the pcode string
 	 */
-	public static void getPcodeForGetField(PcodeOpEmitter pCode, int index,
+	public static String getPcodeForGetField(int index,
 			AbstractConstantPoolInfoJava[] constantPool) {
+		StringBuilder pCode = new StringBuilder();
 
 		String descriptor = getDescriptorForFieldRef(constantPool, index);
 
 		switch (descriptor.charAt(0)) {
 			case DescriptorDecoder.BASE_TYPE_BYTE:  //signed byte
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 1,
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 1,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETFIELD);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 1, TEMP_1);
-				pCode.emitSignExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 1, TEMP_1);
+				PcodeTextEmitter.emitSignExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_BOOLEAN:  //boolean
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 1,
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 1,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETFIELD);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 1, TEMP_1);
-				pCode.emitZeroExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 1, TEMP_1);
+				PcodeTextEmitter.emitZeroExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_CHAR:  //char
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 2,
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 2,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETFIELD);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 2, TEMP_1);
-				pCode.emitZeroExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 2, TEMP_1);
+				PcodeTextEmitter.emitZeroExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_SHORT:  //signed short
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 2,
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 2,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETFIELD);
-				pCode.emitAssignVarnodeFromDereference(TEMP_2, 2, TEMP_1);
-				pCode.emitSignExtension(VALUE, 4, TEMP_2);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, TEMP_2, 2, TEMP_1);
+				PcodeTextEmitter.emitSignExtension(pCode, VALUE, 4, TEMP_2);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_ARRAY:  //array dimension
 			case DescriptorDecoder.BASE_TYPE_FLOAT:  //float
 			case DescriptorDecoder.BASE_TYPE_INT:  //int
 			case DescriptorDecoder.BASE_TYPE_REFERENCE:  //object reference
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETFIELD);
-				pCode.emitAssignVarnodeFromDereference(VALUE, 4, TEMP_1);
-				pCode.emitPushCat1Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, VALUE, 4, TEMP_1);
+				PcodeTextEmitter.emitPushCat1Value(pCode, VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_DOUBLE:  //double
 			case DescriptorDecoder.BASE_TYPE_LONG:  //long
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(TEMP_1, 8,
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, TEMP_1, 8,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_GETFIELD);
-				pCode.emitAssignVarnodeFromDereference(VALUE, 8, TEMP_1);
-				pCode.emitPushCat2Value(VALUE);
+				PcodeTextEmitter.emitAssignVarnodeFromDereference(pCode, VALUE, 8, TEMP_1);
+				PcodeTextEmitter.emitPushCat2Value(pCode, VALUE);
 				break;
 			default:
 				throw new IllegalArgumentException("Invalid descriptor: " + descriptor);
 		}
+		return pCode.toString();
 	}
 
 	/**
 	 * Generate pcode for a putfield op
-	 * @param pCode is the pcode accumulator
 	 * @param index - the index of the field reference in the constant pool
 	 * @param constantPool - the constant pool
+	 * @return - the pcode
 	 */
-	public static void getPcodeForPutField(PcodeOpEmitter pCode, int index,
+	public static String getPcodeForPutField(int index,
 			AbstractConstantPoolInfoJava[] constantPool) {
+		StringBuilder pCode = new StringBuilder();
+
 		//determine the computational category and push a value of the correct size onto the operand stack
 		String descriptor = getDescriptorForFieldRef(constantPool, index);
 
 		switch (descriptor.charAt(0)) {
 			case DescriptorDecoder.BASE_TYPE_BYTE:  //signed byte
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(FIELD_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, FIELD_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTFIELD);
-				pCode.emitTruncate(TEMP_1, 1, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 1, FIELD_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 1, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 1, FIELD_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_BOOLEAN:  //boolean
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(FIELD_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, FIELD_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTFIELD);
-				pCode.emitTruncate(TEMP_1, 1, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 1, FIELD_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 1, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 1, FIELD_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_CHAR:  //char
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(FIELD_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, FIELD_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTFIELD);
-				pCode.emitTruncate(TEMP_1, 2, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 2, FIELD_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 2, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 2, FIELD_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_SHORT:  //signed short
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(FIELD_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, FIELD_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTFIELD);
-				pCode.emitTruncate(TEMP_1, 2, NEW_VALUE);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 2, FIELD_OFFSET,
+				PcodeTextEmitter.emitTruncate(pCode, TEMP_1, 2, NEW_VALUE);
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 2, FIELD_OFFSET,
 					TEMP_1);
 				break;
 			case DescriptorDecoder.BASE_TYPE_ARRAY:  //array dimension
 			case DescriptorDecoder.BASE_TYPE_FLOAT:  //float
 			case DescriptorDecoder.BASE_TYPE_INT:  //int
 			case DescriptorDecoder.BASE_TYPE_REFERENCE:  //object reference
-				pCode.emitPopCat1Value(NEW_VALUE);
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(FIELD_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat1Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, FIELD_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTFIELD);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 4, FIELD_OFFSET,
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 4, FIELD_OFFSET,
 					NEW_VALUE);
 				break;
 			case DescriptorDecoder.BASE_TYPE_DOUBLE:  //double
 			case DescriptorDecoder.BASE_TYPE_LONG:  //long
-				pCode.emitPopCat2Value(NEW_VALUE);
-				pCode.emitPopCat1Value(OBJECT_REF);
-				pCode.emitAssignVarnodeFromPcodeOpCall(FIELD_OFFSET, 4,
+				PcodeTextEmitter.emitPopCat2Value(pCode, NEW_VALUE);
+				PcodeTextEmitter.emitPopCat1Value(pCode, OBJECT_REF);
+				PcodeTextEmitter.emitAssignVarnodeFromPcodeOpCall(pCode, FIELD_OFFSET, 4,
 					ConstantPoolJava.CPOOL_OP, OBJECT_REF, Integer.toString(index),
 					ConstantPoolJava.CPOOL_PUTFIELD);
-				pCode.emitWriteToMemory(PcodeOpEmitter.RAM, 8, FIELD_OFFSET,
+				PcodeTextEmitter.emitWriteToMemory(pCode, PcodeTextEmitter.RAM, 8, FIELD_OFFSET,
 					NEW_VALUE);
 				break;
 			default:
 				throw new IllegalArgumentException("Invalid descriptor: " + descriptor);
 		}
+		return pCode.toString();
 
 		/*JavaComputationalCategory category = DescriptorDecoder.getComputationalCategoryOfDescriptor(descriptor);
 		switch (category){

@@ -1156,8 +1156,13 @@ public class ProgramDiff {
 	private AddressSet getProgramContextDifferences(AddressSetView addressSet, TaskMonitor monitor)
 			throws ProgramConflictException, CancelledException {
 		AddressSet differences = new AddressSet();
-
-		if (!ProgramMemoryComparator.sameProgramContextRegisterNames(program1, program2)) {
+		ProgramContext pc1 = program1.getProgramContext();
+		ProgramContext pc2 = program2.getProgramContext();
+		String[] names1 = pc1.getRegisterNames();
+		String[] names2 = pc2.getRegisterNames();
+		Arrays.sort(names1);
+		Arrays.sort(names2);
+		if (!Arrays.equals(names1, names2)) {
 			throw new ProgramConflictException(
 				"Program Context Registers don't match between the programs.");
 		}
@@ -1166,10 +1171,7 @@ public class ProgramDiff {
 		AddressSet inCommon = pgmMemComp.getAddressesInCommon();
 		addressSet = (addressSet != null) ? inCommon.intersect(addressSet) : inCommon;
 
-		ProgramContext pc1 = program1.getProgramContext();
-		ProgramContext pc2 = program2.getProgramContext();
-
-		for (String element : pc1.getRegisterNames()) {
+		for (String element : names1) {
 			monitor.checkCanceled();
 			Register rb1 = pc1.getRegister(element);
 			Register rb2 = pc2.getRegister(element);

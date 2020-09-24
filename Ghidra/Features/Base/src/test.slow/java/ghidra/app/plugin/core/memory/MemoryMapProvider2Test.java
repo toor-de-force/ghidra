@@ -215,7 +215,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.WRITE));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.OVERLAY));
 		assertEquals("Default", model.getValueAt(0, MemoryMapModel.BLOCK_TYPE));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.INIT));
 		assertEquals("", model.getValueAt(0, MemoryMapModel.SOURCE));
@@ -293,7 +292,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.WRITE));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.OVERLAY));
 		assertEquals("Default", model.getValueAt(0, MemoryMapModel.BLOCK_TYPE));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.INIT));
 		assertEquals("", model.getValueAt(0, MemoryMapModel.SOURCE));
@@ -580,7 +578,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.WRITE));
 		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.OVERLAY));
 		assertEquals("Default", model.getValueAt(0, MemoryMapModel.BLOCK_TYPE));
 		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.INIT));
 		assertEquals("", model.getValueAt(0, MemoryMapModel.SOURCE));
@@ -614,7 +611,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		final JCheckBox readCB = (JCheckBox) findComponentByName(d.getComponent(), "Read");
 		final JCheckBox writeCB = (JCheckBox) findComponentByName(d.getComponent(), "Write");
 		final JCheckBox executeCB = (JCheckBox) findComponentByName(d.getComponent(), "Execute");
-		final JCheckBox overlayCB = (JCheckBox) findComponentByName(d.getComponent(), "Overlay");
 		final JRadioButton initializedRB =
 			(JRadioButton) findComponentByName(d.getComponent(), "Initialized");
 		final RegisterField initialValue =
@@ -627,16 +623,11 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		final JButton okButton = findButton(d.getComponent(), "OK");
 
 		SwingUtilities.invokeAndWait(() -> {
-			comboBox.setSelectedItem(MemoryBlockType.DEFAULT);
-			overlayCB.setSelected(true);
-			overlayCB.getActionListeners()[0].actionPerformed(null);
+			comboBox.setSelectedItem(MemoryBlockType.OVERLAY);
 			nameField.setText(".test");
 			lengthField.setText("0x100");
 			commentField.setText("this is a block test");
 			initialValue.setText("0xa");
-		});
-
-		SwingUtilities.invokeAndWait(() -> {
 			pressButton(executeCB);
 		});
 
@@ -675,9 +666,7 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.WRITE));
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.OVERLAY));
-		assertEquals(
-			MemoryBlockType.DEFAULT.toString(),
+		assertEquals(MemoryBlockType.OVERLAY.toString(),
 			model.getValueAt(row, MemoryMapModel.BLOCK_TYPE));
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.INIT));
 		assertEquals("", model.getValueAt(row, MemoryMapModel.SOURCE));
@@ -704,8 +693,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		final JCheckBox readCB = (JCheckBox) findComponentByName(d.getComponent(), "Read");
 		final JCheckBox writeCB = (JCheckBox) findComponentByName(d.getComponent(), "Write");
 		final JCheckBox executeCB = (JCheckBox) findComponentByName(d.getComponent(), "Execute");
-		final JCheckBox overlayCB = (JCheckBox) findComponentByName(d.getComponent(), "Overlay");
-
 		final JRadioButton uninitRB =
 			(JRadioButton) findComponentByName(d.getComponent(), "Uninitialized");
 		final AddressInput addrField =
@@ -716,9 +703,7 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		final JButton okButton = findButton(d.getComponent(), "OK");
 
 		SwingUtilities.invokeAndWait(() -> {
-			comboBox.setSelectedItem(MemoryBlockType.DEFAULT);
-			overlayCB.setSelected(true);
-			overlayCB.getActionListeners()[0].actionPerformed(null);
+			comboBox.setSelectedItem(MemoryBlockType.OVERLAY);
 			nameField.setText(".test");
 			lengthField.setText("0x100");
 			commentField.setText("this is a block test");
@@ -758,9 +743,7 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.WRITE));
 		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.TRUE, model.getValueAt(row, MemoryMapModel.OVERLAY));
-		assertEquals(
-			MemoryBlockType.DEFAULT.toString(),
+		assertEquals(MemoryBlockType.OVERLAY.toString(),
 			model.getValueAt(row, MemoryMapModel.BLOCK_TYPE));
 		assertEquals(Boolean.FALSE, model.getValueAt(row, MemoryMapModel.INIT));
 		assertEquals("", model.getValueAt(row, MemoryMapModel.SOURCE));
@@ -839,7 +822,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.WRITE));
 		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.OVERLAY));
 		assertEquals("Bit Mapped", model.getValueAt(0, MemoryMapModel.BLOCK_TYPE));
 		assertNull(model.getValueAt(0, MemoryMapModel.INIT));
 		assertEquals("01001000", model.getValueAt(0, MemoryMapModel.SOURCE));
@@ -918,7 +900,6 @@ public class MemoryMapProvider2Test extends AbstractGhidraHeadedIntegrationTest 
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.READ));
 		assertEquals(Boolean.TRUE, model.getValueAt(0, MemoryMapModel.WRITE));
 		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.EXECUTE));
-		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.OVERLAY));
 		assertEquals("Byte Mapped", model.getValueAt(0, MemoryMapModel.BLOCK_TYPE));
 		assertEquals(Boolean.FALSE, model.getValueAt(0, MemoryMapModel.INIT));
 		assertEquals("01001000", model.getValueAt(0, MemoryMapModel.SOURCE));

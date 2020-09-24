@@ -35,6 +35,9 @@ class FidHasherFactory implements Factory<Function, FidHashQuad> {
 	@Override
 	public FidHashQuad get(Function function) {
 		try {
+			if (function == null) {
+				return null;
+			}
 			return hasher.hash(function);
 		}
 		catch (MemoryAccessException e) {

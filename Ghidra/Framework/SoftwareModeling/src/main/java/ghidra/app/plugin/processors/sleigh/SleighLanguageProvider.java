@@ -177,12 +177,8 @@ public class SleighLanguageProvider implements LanguageProvider {
 			}
 		};
 		XmlPullParser parser = XmlPullParserFactory.create(specFile, errHandler, false);
-		try {
-			read(parser, specFile.getParentFile(), specFile.getName());
-		}
-		finally {
-			parser.dispose();
-		}
+		read(parser, specFile.getParentFile(), specFile.getName());
+		parser.dispose();
 	}
 
 	private void read(XmlPullParser parser, ResourceFile parentDirectory, String ldefs) {

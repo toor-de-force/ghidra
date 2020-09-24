@@ -1011,8 +1011,6 @@ public class DataTypeMerge6Test extends AbstractDataTypeMergeTest {
 		setupStructureInUnionAndViceVersa();
 		executeMerge();
 
-		close(waitForWindow("Union Update Failed")); // expected dependency error on CoolUnion
-
 		waitForCompletion();
 
 		DataTypeManager dtm = resultProgram.getDataTypeManager();

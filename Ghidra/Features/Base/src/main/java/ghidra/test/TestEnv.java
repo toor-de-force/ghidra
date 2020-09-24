@@ -35,7 +35,6 @@ import ghidra.app.events.OpenProgramPluginEvent;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.plugin.core.progmgr.ProgramManagerPlugin;
 import ghidra.app.plugin.core.script.GhidraScriptMgrPlugin;
-import ghidra.app.script.GhidraScript;
 import ghidra.app.script.JavaScriptProvider;
 import ghidra.app.services.ProgramManager;
 import ghidra.base.project.GhidraProject;
@@ -550,33 +549,29 @@ public class TestEnv {
 		});
 	}
 
-	public ScriptTaskListener runScript(File scriptFile) throws PluginException {
-		GhidraScriptMgrPlugin scriptManagerPlugin = getPlugin(GhidraScriptMgrPlugin.class);
-		if (scriptManagerPlugin == null) {
-			lazyTool().addPlugin(GhidraScriptMgrPlugin.class.getName());
-			scriptManagerPlugin = getPlugin(GhidraScriptMgrPlugin.class);
-		}
-		
+	public ScriptTaskListener runScript(File script) throws PluginException {
+
 		JavaScriptProvider scriptProvider = new JavaScriptProvider();
 		PrintWriter writer = new PrintWriter(System.out);
-		ResourceFile resourceFile = new ResourceFile(scriptFile);
-		GhidraScript script=null;
-		try {
-			script=scriptProvider.getScriptInstance(resourceFile, writer);
-		}
-		catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-			e.printStackTrace();
-			
-		}
-		if (script==null) {
+		ResourceFile resourceFile = new ResourceFile(script);
+		Boolean result = (Boolean) AbstractGenericTest.invokeInstanceMethod("compile",
+			scriptProvider, new Class<?>[] { ResourceFile.class, PrintWriter.class },
+			new Object[] { resourceFile, writer });
+
+		if (!result) {
 			writer.flush();
-			throw new RuntimeException("Failed to compile script " + scriptFile.getAbsolutePath());
+			throw new RuntimeException("Failed to compile script " + script.getAbsolutePath());
 		}
 
+		GhidraScriptMgrPlugin sm = getPlugin(GhidraScriptMgrPlugin.class);
+		if (sm == null) {
+			lazyTool().addPlugin(GhidraScriptMgrPlugin.class.getName());
+			sm = getPlugin(GhidraScriptMgrPlugin.class);
+		}
 
-		String scriptName = scriptFile.getName();
+		String scriptName = script.getName();
 		ScriptTaskListener listener = new ScriptTaskListener(scriptName);
-		scriptManagerPlugin.runScript(scriptName, listener);
+		sm.runScript(scriptName, listener);
 		return listener;
 	}
 
@@ -886,7 +881,7 @@ public class TestEnv {
 
 			Project project = frontEndToolInstance.getProject();
 			ToolServices toolServices = project.getToolServices();
-			PluginTool newTool = toolServices.launchTool(toolName, null);
+			PluginTool newTool = (PluginTool) toolServices.launchTool(toolName, null);
 			if (newTool == null) {
 				// couldn't find the tool in the workspace...check the test area
 				newTool = launchDefaultToolByName(toolName);

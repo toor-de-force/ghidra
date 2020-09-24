@@ -72,8 +72,8 @@ public class SymbolPathParser {
 					int endIndex = i; // could be 0 if i == 0.
 					if (endIndex > startIndex) {
 						list.add(name.substring(startIndex, endIndex));
-						startIndex = i + 2;
-						i++; // Only increment one, because the loop also has an increment.
+						i += 2;
+						startIndex = i;
 					}
 				}
 			}
@@ -100,8 +100,8 @@ public class SymbolPathParser {
 					int endIndex = i; // could be 0 if i == 0.
 					if (endIndex > startIndex) {
 						list.add(name.substring(startIndex, endIndex));
-						startIndex = i + 2;
-						i++; // Only increment one, because the loop also has an increment.
+						i += 2;
+						startIndex = i;
 					}
 				}
 			}

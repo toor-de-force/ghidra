@@ -332,13 +332,15 @@ public class ConstantPropagationAnalyzer extends AbstractAnalyzer {
 			if (resultSet != null) { // null sometimes when cancelled
 				// set.getMinAddress() and start may not be in the same segment
 				if (!start.equals(set.getMinAddress())) {
-					set = AddressSetView.trimStart(set, start);
+					set = set.subtract(new AddressSet(set.getMinAddress(), start));
 				}
 				set = set.subtract(resultSet);
 			}
 		}
 	}
 
+
+	
 	/**
 	 * Analyze a single location
 	 * 

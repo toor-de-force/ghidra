@@ -202,7 +202,7 @@ public class HighFunctionDBUtil {
 	 * @param highFunction is the decompiler's model of the function
 	 * @param source is the desired SourceType for the commit
 	 */
-	public static void commitLocalNamesToDatabase(HighFunction highFunction, SourceType source) {
+	public static void commitLocalsToDatabase(HighFunction highFunction, SourceType source) {
 
 		Function function = highFunction.getFunction();
 
@@ -216,7 +216,19 @@ public class HighFunctionDBUtil {
 			}
 			String name = sym.getName();
 			try {
-				HighFunctionDBUtil.updateDBVariable(sym, null, null, source);
+				Variable var =
+					clearConflictingLocalVariables(function, sym.getStorage(), sym.getPCAddress());
+				if (var == null) {
+					var = createLocalVariable(function, sym.getDataType(), sym.getStorage(),
+						sym.getPCAddress(), source);
+					if (name != null) {
+						var.setName(name, source);
+					}
+				}
+				else {
+					var.setDataType(sym.getDataType(), sym.getStorage(), false, source);
+					var.setName(name, source);
+				}
 			}
 			catch (UsrException e) {
 				Msg.error(HighFunctionDBUtil.class, "Local variable commit failed for " +
@@ -599,7 +611,7 @@ public class HighFunctionDBUtil {
 
 			if (name != null) {
 				try {
-					setGlobalName(highSymbol, name, source);
+					setGlobalName(highSymbol, highSymbol.getName(), source);
 				}
 				catch (DuplicateNameException e) {
 					if (isRename) {

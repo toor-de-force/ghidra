@@ -15,7 +15,8 @@
  */
 package ghidra.util.extensions;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.*;
 import java.util.Set;
@@ -56,9 +57,7 @@ public class ExtensionUtilsTest extends AbstractGenericTest {
 		// we start with a clean slate). If they're not empty, CORRECT THE SITUATION.
 		if (!checkCleanInstall()) {
 			FileUtilities.deleteDir(gLayout.getExtensionArchiveDir().getFile(false));
-			for (ResourceFile installDir : gLayout.getExtensionInstallationDirs()) {
-				FileUtilities.deleteDir(installDir.getFile(false));
-			}
+			FileUtilities.deleteDir(gLayout.getExtensionInstallationDir().getFile(false));
 		}
 
 		createExtensionDirs();
@@ -249,7 +248,7 @@ public class ExtensionUtilsTest extends AbstractGenericTest {
 			}
 		}
 		
-		ResourceFile installDir = gLayout.getExtensionInstallationDirs().get(0);
+		ResourceFile installDir = gLayout.getExtensionInstallationDir();
 		if (!installDir.exists()) {
 			if (!installDir.mkdir()) {
 				throw new IOException("Failed to create extension installation directory for test");
@@ -261,7 +260,7 @@ public class ExtensionUtilsTest extends AbstractGenericTest {
 	 * Verifies that the installation folder is empty.
 	 */
 	private boolean checkCleanInstall() {
-		ResourceFile[] files = gLayout.getExtensionInstallationDirs().get(0).listFiles();
+		ResourceFile[] files = gLayout.getExtensionInstallationDir().listFiles();
 		return (files == null || files.length == 0);
 	}
 
@@ -272,7 +271,7 @@ public class ExtensionUtilsTest extends AbstractGenericTest {
 	 * @param name the name of the installed extension
 	 */
 	private void checkDirtyInstall(String name) {
-		ResourceFile[] files = gLayout.getExtensionInstallationDirs().get(0).listFiles();
+		ResourceFile[] files = gLayout.getExtensionInstallationDir().listFiles();
 		assertTrue(files.length >= 1);
 		assertTrue(files[0].getName().equals(name));
 	}

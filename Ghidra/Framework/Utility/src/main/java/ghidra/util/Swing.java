@@ -84,18 +84,21 @@ public class Swing {
 	}
 
 	/**
-	 * Logs a stack trace if the current calling thread is not the Swing thread
-	 * @param errorMessage The message to display when not on the Swing thread
-	 * @return true if the calling thread is the Swing thread
+	 * A development/testing time method to make sure the current thread is the swing thread.
+	 * @param errorMessage The message to display when the assert fails
 	 */
-	public static boolean assertSwingThread(String errorMessage) {
+	public static void assertThisIsTheSwingThread(String errorMessage) {
+		boolean isProductionMode =
+			!SystemUtilities.isInTestingMode() && !SystemUtilities.isInDevelopmentMode();
+		if (isProductionMode) {
+			return; // squash during production mode
+		}
+
 		if (!isSwingThread()) {
 			Throwable t =
 				ReflectionUtilities.filterJavaThrowable(new AssertException(errorMessage));
-			Msg.error(Swing.class, errorMessage, t);
-			return false;
+			Msg.error(SystemUtilities.class, errorMessage, t);
 		}
-		return true;
 	}
 
 	/**

@@ -15,11 +15,12 @@
  */
 package ghidra.app.plugin.core.script;
 
+import generic.jar.ResourceFile;
+import ghidra.app.script.GhidraScriptUtil;
+import ghidra.util.HelpLocation;
+
 import java.awt.Component;
 import java.io.File;
-
-import generic.jar.ResourceFile;
-import ghidra.util.HelpLocation;
 
 class SaveNewScriptDialog extends SaveDialog {
 
@@ -27,6 +28,7 @@ class SaveNewScriptDialog extends SaveDialog {
 			GhidraScriptComponentProvider componentProvider, ResourceFile scriptFile,
 			HelpLocation help) {
 		super(parent, title, componentProvider, scriptFile, help);
+
 	}
 
 	/**
@@ -35,7 +37,7 @@ class SaveNewScriptDialog extends SaveDialog {
 	 */
 	@Override
 	protected String getDuplicateNameErrorMessage(String name) {
-		if (componentProvider.getInfoManager().alreadyExists(name)) {
+		if (GhidraScriptUtil.alreadyExists(name)) {
 			return "Duplicate script name.";
 		}
 

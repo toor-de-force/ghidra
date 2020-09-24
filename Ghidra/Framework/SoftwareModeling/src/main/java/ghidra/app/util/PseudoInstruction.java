@@ -548,7 +548,7 @@ public class PseudoInstruction extends PseudoCodeUnit implements Instruction, In
 	}
 
 	@Override
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		return procContext.getRegisters();
 	}
 

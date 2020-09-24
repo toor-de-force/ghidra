@@ -28,7 +28,7 @@ import javax.swing.event.*;
 import docking.widgets.textfield.IntegerTextField;
 
 /**
- * Creates a component for editing Integer values using an {@link IntegerTextField} and a {@link JSpinner}.
+ * Creates a component for editing Integer values using an integerTextField and a Jspinner.
  */
 public class IntegerSpinner {
 
@@ -46,11 +46,10 @@ public class IntegerSpinner {
 
 		spinner = new JSpinner(spinnerModel);
 
-		integerTextField = new IntegerTextField(10, ((Number) spinnerModel.getValue()).longValue());
+		integerTextField = new IntegerTextField(10, (Long) spinnerModel.getValue());
 		integerTextField.getComponent().setName("integer.spinner.editor");
-		Number maximum = (Number) spinnerModel.getMaximum();
-		integerTextField.setMaxValue(
-			maximum == null ? null : BigInteger.valueOf(maximum.longValue()));
+		Long maximum = (Long) spinnerModel.getMaximum();
+		integerTextField.setMaxValue(maximum == null ? null : BigInteger.valueOf(maximum));
 
 		spinner.setEditor(integerTextField.getComponent());
 
@@ -90,13 +89,15 @@ public class IntegerSpinner {
 					if (previousValue != null) {
 						spinner.setValue(previousValue);
 					}
-				} else {
+				}
+				else {
 					Object nextValue = model.getNextValue();
 					if (nextValue != null) {
 						spinner.setValue(nextValue);
 					}
 				}
-			} catch (IllegalArgumentException iae) {
+			}
+			catch (IllegalArgumentException iae) {
 				// ignored
 			}
 		});
@@ -111,11 +112,6 @@ public class IntegerSpinner {
 
 	}
 
-	/**
-	 * Returns the JSpinner that has been attached to the text field.
-	 *
-	 * @return the JSpinner that has been attached to the text field
-	 */
 	public JSpinner getSpinner() {
 		return spinner;
 	}
@@ -123,7 +119,7 @@ public class IntegerSpinner {
 	/**
 	 * Returns the IntegerTextField that has been attached to the spinner.
 	 *
-	 * @return the IntegerTextField that has been attached to the spinner.
+	 * @return  the IntegerTextField that has been attached to the spinner.
 	 */
 	public IntegerTextField getTextField() {
 		return integerTextField;

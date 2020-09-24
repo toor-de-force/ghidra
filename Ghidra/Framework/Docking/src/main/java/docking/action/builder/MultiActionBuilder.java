@@ -53,12 +53,13 @@ public class MultiActionBuilder
 	@Override
 	public MultiActionDockingAction build() {
 		validate();
-		MultiActionDockingAction action = new MultiActionDockingAction(name, owner) {
-			@Override
-			public void actionPerformed(ActionContext context) {
-				actionCallback.accept(context);
-			}
-		};
+		MultiActionDockingAction action =
+			new MultiActionDockingAction(name, owner) {
+				@Override
+				public void actionPerformed(ActionContext context) {
+					actionCallback.accept(context);
+				}
+			};
 		decorateAction(action);
 		action.setActions(actionList);
 		action.setPerformActionOnButtonClick(performActionOnButtonClick);
@@ -95,12 +96,7 @@ public class MultiActionBuilder
 
 	@Override
 	protected void validate() {
-		// if the MultiAction performs an action when the main button is presseed, make sure that 
-		// an action callback has been defined in before building (which is what super validate
-		// does). Otherwise, don't force the client to define an action callback if it won't be used.
-		if (performActionOnButtonClick) {
-			super.validate();
-		}
+		super.validate();
 		if (actionList == null) {
 			throw new IllegalStateException("No ActionList has been set");
 		}

@@ -15,6 +15,10 @@
  */
 package ghidra.app.plugin.core.codebrowser.actions;
 
+import ghidra.app.plugin.core.codebrowser.CodeViewerProvider;
+import ghidra.app.util.HelpTopics;
+import ghidra.util.HelpLocation;
+
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
@@ -22,32 +26,27 @@ import docking.ActionContext;
 import docking.action.KeyBindingData;
 import docking.action.MenuData;
 import docking.tool.ToolConstants;
-import ghidra.app.plugin.core.codebrowser.CodeViewerProvider;
-import ghidra.app.util.HelpTopics;
-import ghidra.util.HelpLocation;
 
 /**
  * Action for adding all fields to the current format.
  */
 public class SelectAllAction extends CodeViewerContextAction {
+	
+    public SelectAllAction(String owner) {
+        super("Select All", owner);
+        setMenuBarData( 
+        	new MenuData( 
+        	new String[] {ToolConstants.MENU_SELECTION,  "&All in View" },null,"Select" ) );
 
-	public SelectAllAction(String owner) {
-		super("Select All", owner);
-		// this is in the main tool menu, so make it a tool action
-		setSupportsDefaultToolContext(true);
-		setMenuBarData(
-			new MenuData(
-				new String[] { ToolConstants.MENU_SELECTION, "&All in View" }, null, "Select"));
-
-		setKeyBindingData(new KeyBindingData(
-			KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
+        setKeyBindingData( new KeyBindingData( 
+        	KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK ) );
 
 		setHelpLocation(new HelpLocation(HelpTopics.SELECTION, getName()));
-	}
-
-	@Override
-	public void actionPerformed(ActionContext context) {
-		CodeViewerProvider provider = (CodeViewerProvider) context.getComponentProvider();
-		provider.selectAll();
-	}
+    }
+    @Override
+    public void actionPerformed(ActionContext context) {
+    	CodeViewerProvider provider = (CodeViewerProvider) context.getComponentProvider();
+    	provider.selectAll();
+    }
 }
+

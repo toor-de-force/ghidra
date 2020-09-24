@@ -17,7 +17,6 @@ package ghidra.app.merge.listing;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Map;
 
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -36,6 +35,7 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.program.util.*;
 import ghidra.util.Msg;
+import ghidra.util.datastruct.LongObjectHashtable;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.NotYetImplementedException;
 import ghidra.util.task.TaskMonitor;
@@ -100,8 +100,8 @@ class CodeUnitMerger extends AbstractListingMerger {
 	ProgramMerge mergeLatest;
 	ProgramMerge mergeOriginal;
 
-	private Map<Long, DataType> myResolvedDts; // maps data type ID -> resolved Data type
-	private Map<Long, DataType> origResolvedDts;
+	private LongObjectHashtable<DataType> myResolvedDts; // maps data type ID -> resolved Data type
+	private LongObjectHashtable<DataType> origResolvedDts;
 
 	/**
 	 * Manages code unit changes and conflicts between the latest versioned
@@ -147,9 +147,9 @@ class CodeUnitMerger extends AbstractListingMerger {
 		mergeLatest = listingMergeMgr.mergeLatest;
 		mergeOriginal = listingMergeMgr.mergeOriginal;
 
-		myResolvedDts = (Map<Long, DataType>) mergeManager.getResolveInformation(
+		myResolvedDts = (LongObjectHashtable<DataType>) mergeManager.getResolveInformation(
 			MergeConstants.RESOLVED_MY_DTS);
-		origResolvedDts = (Map<Long, DataType>) mergeManager.getResolveInformation(
+		origResolvedDts = (LongObjectHashtable<DataType>) mergeManager.getResolveInformation(
 			MergeConstants.RESOLVED_ORIGINAL_DTS);
 
 		mergedCodeUnits = new AddressSet();

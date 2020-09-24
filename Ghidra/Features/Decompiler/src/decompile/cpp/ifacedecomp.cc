@@ -127,7 +127,6 @@ void IfaceDecompCapability::registerCommands(IfaceStatus *status)
   status->registerCom(new IfcCallFixup(),"fixup","call");
   status->registerCom(new IfcCallOtherFixup(),"fixup","callother");
   status->registerCom(new IfcVolatile(),"volatile");
-  status->registerCom(new IfcReadonly(),"readonly");
   status->registerCom(new IfcPreferSplit(),"prefersplit");
   status->registerCom(new IfcStructureBlocks(),"structure","blocks");
   status->registerCom(new IfcAnalyzeRange(), "analyze","range");
@@ -223,14 +222,6 @@ IfaceDecompData::~IfaceDecompData(void)
   if (conf != (Architecture *)0)
     delete conf;
 // fd will get deleted with Database
-}
-
-void IfaceDecompData::allocateCallGraph(void)
-
-{
-  if (cgraph != (CallGraph *)0)
-    delete cgraph;
-  cgraph = new CallGraph(conf);
 }
 
 void IfaceDecompData::abortFunction(ostream &s)
@@ -369,10 +360,10 @@ static void IfcFollowFlow(ostream &s,IfaceDecompData *dcp,const Address &offset,
     if (size==0) {
       Address baddr(dcp->fd->getAddress().getSpace(),0);
       Address eaddr(dcp->fd->getAddress().getSpace(),dcp->fd->getAddress().getSpace()->getHighest());
-      dcp->fd->followFlow(baddr,eaddr);
+      dcp->fd->followFlow(baddr,eaddr,0);
     }
     else
-      dcp->fd->followFlow(offset,offset+size);
+      dcp->fd->followFlow(offset,offset+size,0);
     s << "Function " << dcp->fd->getName() << ": ";
     dcp->fd->getAddress().printRaw(s);
     s << endl;
@@ -393,7 +384,7 @@ void IfcFuncload::execute(istream &s)
     throw IfaceExecutionError("No image loaded");
 
   string basename;
-  Scope *funcscope = dcp->conf->symboltab->resolveScopeFromSymbolName(funcname,"::",basename,(Scope *)0);
+  Scope *funcscope = dcp->conf->symboltab->resolveScopeSymbolName(funcname,"::",basename,(Scope *)0);
   if (funcscope == (Scope *)0)
     throw IfaceExecutionError("Bad namespace: "+funcname);
   dcp->fd = funcscope->queryFunction( basename ); // Is function already in database
@@ -438,7 +429,7 @@ void IfcReadSymbols::execute(istream &s)
   if (dcp->conf->loader == (LoadImage *)0)
     throw IfaceExecutionError("No binary loaded");
 
-  dcp->conf->readLoaderSymbols("::");
+  dcp->conf->readLoaderSymbols();
 }
 
 void IfcMapaddress::execute(istream &s)
@@ -460,16 +451,9 @@ void IfcMapaddress::execute(istream &s)
     Symbol *sym;
     uint4 flags = Varnode::namelock|Varnode::typelock;
     flags |= dcp->conf->symboltab->getProperty(addr); // Inherit existing properties
-    string basename;
-    Scope *scope = dcp->conf->symboltab->findCreateScopeFromSymbolName(name, "::", basename, (Scope *)0);
-    sym = scope->addSymbol(basename,ct,addr,Address())->getSymbol();
+    sym = dcp->conf->symboltab->getGlobalScope()->addSymbol(name,ct,addr,Address())->getSymbol();
     sym->getScope()->setAttribute(sym,flags);
-    if (scope->getParent() != (Scope *)0) {		// If this is a global namespace scope
-      SymbolEntry *e = sym->getFirstWholeMap();		// Adjust range
-      dcp->conf->symboltab->addRange(scope,e->getAddr().getSpace(),e->getFirst(),e->getLast());
-    }
   }
-
 }
 
 void IfcMaphash::execute(istream &s)
@@ -504,9 +488,7 @@ void IfcMapfunction::execute(istream &s)
   s >> name;			// Read optional name
   if (name.empty())
     dcp->conf->nameFunction(addr,name); // Pick default name if necessary
-  string basename;
-  Scope *scope = dcp->conf->symboltab->findCreateScopeFromSymbolName(name, "::", basename, (Scope *)0);
-  dcp->fd = scope->addFunction(addr,name)->getFunction();
+  dcp->fd = dcp->conf->symboltab->getGlobalScope()->addFunction(addr,name)->getFunction();
 
   string nocode;
   s >> ws >> nocode;
@@ -1783,15 +1765,18 @@ void IfcPrintMap::execute(istream &s)
   
   if (dcp->conf == (Architecture *)0)
     throw IfaceExecutionError("No load image");
-  if (name.size() != 0 || dcp->fd==(Funcdata *)0) {
-    string fullname = name + "::a";		// Add fake variable name
-    scope = dcp->conf->symboltab->resolveScopeFromSymbolName(fullname, "::", fullname, (Scope *)0);
+  if ((name=="global")||(dcp->fd==(Funcdata *)0)) {
+    scope = dcp->conf->symboltab->getGlobalScope();
+    name = "";
   }
   else
     scope = dcp->fd->getScopeLocal();
     
-  if (scope == (Scope *)0)
-    throw IfaceExecutionError("No map named: "+name);
+  if (name.size() != 0) {
+    scope = scope->resolveScope(name);
+    if (scope == (Scope *)0)
+      throw IfaceExecutionError("No map named: "+name);
+  }
 
   *status->fileoptr << scope->getFullName() << endl;
   scope->printBounds(*status->fileoptr);
@@ -2110,7 +2095,10 @@ void IfcDuplicateHash::iterationCallback(Funcdata *fd)
 void IfcCallGraphBuild::execute(istream &s)
 
 { // Build call graph from existing function starts
-  dcp->allocateCallGraph();
+  if (dcp->cgraph != (CallGraph *)0)
+    delete dcp->cgraph;
+
+  dcp->cgraph = new CallGraph(dcp->conf);
 
   dcp->cgraph->buildAllNodes();		// Build a node in the graph for existing symbols
   quick = false;
@@ -2157,7 +2145,11 @@ void IfcCallGraphBuild::iterationCallback(Funcdata *fd)
 void IfcCallGraphBuildQuick::execute(istream &s)
 
 { // Build call graph from existing function starts, do only disassembly
-  dcp->allocateCallGraph();
+  if (dcp->cgraph != (CallGraph *)0)
+    delete dcp->cgraph;
+
+  dcp->cgraph = new CallGraph(dcp->conf);
+
   dcp->cgraph->buildAllNodes();	// Build a node in the graph for existing symbols
   quick = true;
   iterateFunctionsAddrOrder();
@@ -2206,7 +2198,7 @@ void IfcCallGraphLoad::execute(istream &s)
   DocumentStorage store;
   Document *doc = store.parseDocument(is);
 
-  dcp->allocateCallGraph();
+  dcp->cgraph = new CallGraph(dcp->conf);
   dcp->cgraph->restoreXml(doc->getRoot());
   *status->optr << "Successfully read in callgraph" << endl;
 
@@ -2310,22 +2302,6 @@ void IfcVolatile::execute(istream &s)
   dcp->conf->symboltab->setPropertyRange(Varnode::volatil,range);
 
   *status->optr << "Successfully marked range as volatile" << endl;
-}
-
-void IfcReadonly::execute(istream &s)
-
-{
-  int4 size = 0;
-  if (dcp->conf == (Architecture *)0)
-    throw IfaceExecutionError("No load image present");
-  Address addr = parse_machaddr(s,size,*dcp->conf->types); // Read required address
-
-  if (size == 0)
-    throw IfaceExecutionError("Must specify a size");
-  Range range( addr.getSpace(), addr.getOffset(), addr.getOffset() + (size-1));
-  dcp->conf->symboltab->setPropertyRange(Varnode::readonly,range);
-
-  *status->optr << "Successfully marked range as readonly" << endl;
 }
 
 void IfcPreferSplit::execute(istream &s)
@@ -2751,7 +2727,6 @@ void mainloop(IfaceStatus *status) {
   for(;;) {
     while(!status->isStreamFinished()) {
       status->writePrompt();
-      status->optr->flush();
       execute(status,dcp);
     }
     if (status->done) break;

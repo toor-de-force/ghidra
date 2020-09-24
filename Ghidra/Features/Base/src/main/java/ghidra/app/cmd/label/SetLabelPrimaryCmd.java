@@ -33,21 +33,19 @@ public class SetLabelPrimaryCmd implements Command {
 	private SymbolTable st;
 	private Address addr;
 	private String name;
-	private Namespace namespace;
+	private Namespace scope;
 	private String errorMsg;
-
-	private Symbol symbol;
 
 	/**
 	 * Constructs a new command for setting the primary state of a label.
 	 * @param addr the address of the label to make primary.
 	 * @param name the name of the label to make primary.
-	 * @param namespace the parent namespace of the label to make primary.
+	 * @param scope the scope of the label to make primary. (the namespace that the label is associated with)
 	 */
-	public SetLabelPrimaryCmd(Address addr, String name, Namespace namespace) {
+	public SetLabelPrimaryCmd(Address addr, String name, Namespace scope) {
 		this.addr = addr;
 		this.name = name;
-		this.namespace = namespace;
+		this.scope = scope;
 	}
 
 	/**
@@ -59,32 +57,27 @@ public class SetLabelPrimaryCmd implements Command {
 		Program program = (Program) obj;
 		st = program.getSymbolTable();
 		Symbol oldSymbol = st.getPrimarySymbol(addr);
+		Symbol newSymbol = st.getSymbol(name, addr, scope);
 
 		if (oldSymbol == null) {
 			errorMsg = "No Symbols at address: " + addr;
 			return false;
 		}
-
-		if (namespace == null) {
-			namespace = program.getGlobalNamespace();
-		}
-		symbol = st.getSymbol(name, addr, namespace);
-		if (symbol == null) {
+		if (newSymbol == null) {
 			// no new symbol - not an error condition if the previous symbol was dynamic.  The
 			// assumption here is that the user has performed an operation that did not actually
 			// change the state of the symbol, like changing the namespace of a default symbol, 
 			// which has no effect
 			if (!oldSymbol.isDynamic()) {
 				errorMsg =
-					"Symbol " + name + " does not exist in namespace " + namespace +
-						" at address " +
+					"Symbol " + name + " does not exist in namespace " + scope + " at address " +
 						addr;
 				return false;
 			}
 			return true;
 		}
 		if (oldSymbol.getSymbolType() == SymbolType.FUNCTION) {
-			if (oldSymbol == symbol) {
+			if (oldSymbol == newSymbol) {
 				return true; // function symbol is already primary
 			}
 			// keep the function symbol and rename it to the new symbol name;
@@ -92,16 +85,14 @@ public class SetLabelPrimaryCmd implements Command {
 			String oldName = oldSymbol.getName();
 			SourceType oldSource = oldSymbol.getSource();
 			Namespace oldParent = oldSymbol.getParentNamespace();
-			if (namespace == oldSymbol.getObject()) {
-				// local label promotion - switch names but not namespaces
-				oldParent = namespace;
-				namespace = oldSymbol.getParentNamespace();
+			Namespace parentNamespace = newSymbol.getParentNamespace();
+			if (parentNamespace == oldSymbol.getObject()) {
+				// parent is the same as the function, so drop the namespace and use global
+				parentNamespace = program.getGlobalNamespace();
 			}
-			SourceType symbolSource = symbol.getSource();
-			symbol.delete();
+			st.removeSymbolSpecial(newSymbol);
 			try {
-				oldSymbol.setNameAndNamespace(name, namespace, symbolSource);
-				symbol = oldSymbol;
+				oldSymbol.setNameAndNamespace(name, parentNamespace, newSymbol.getSource());
 				// If renamed oldSymbol is now Default source don't keep old name (handles special Thunk rename case)
 				if (oldSource != SourceType.DEFAULT && oldSymbol.getSource() != SourceType.DEFAULT) {
 					// put the other symbol back using the old namespace and old source
@@ -120,10 +111,7 @@ public class SetLabelPrimaryCmd implements Command {
 			}
 			return false;
 		}
-		if (!symbol.setPrimary()) {
-			errorMsg = "Set primary not permitted for " + symbol.getName(true);
-			return false;
-		}
+		newSymbol.setPrimary();
 		return true;
 	}
 
@@ -141,14 +129,6 @@ public class SetLabelPrimaryCmd implements Command {
 	@Override
 	public String getName() {
 		return "Set Primary Label";
-	}
-
-	/**
-	 * Get transformed symbol
-	 * @return symbol (may be null if command did not execute successfully)
-	 */
-	public Symbol getSymbol() {
-		return symbol;
 	}
 
 }

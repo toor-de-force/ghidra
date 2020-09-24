@@ -17,23 +17,19 @@ package ghidra.program.model.lang;
 
 import java.util.*;
 
-import ghidra.program.model.address.*;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.OldGenericNamespaceAddress;
 
 public class RegisterManager {
 
-	private List<Register> registers;
-	private Map<String, Register> registerNameMap = new HashMap<String, Register>(); // include aliases and case-variations
-	
-	private List<String> registerNames; // alphabetical sorted list, excludes aliases
-	private List<Register> contextRegisters;
-	private Register contextBaseRegister;
-	
-	private Map<RegisterSizeKey, Register> sizeMap = new HashMap<RegisterSizeKey, Register>();
-	private Map<Address, List<Register>> registerAddressMap =
-		new HashMap<Address, List<Register>>();
+	Register[] registers;
+	Register contextBaseRegister;
+	Map<String, Register> registerNameMap = new HashMap<String, Register>();
+	Map<RegisterSizeKey, Register> sizeMap = new HashMap<RegisterSizeKey, Register>();
+	Map<Address, List<Register>> registerAddressMap = new HashMap<Address, List<Register>>();
 
-	/**List of vector registers, sorted first by size and then by offset**/
-	private List<Register> sortedVectorRegisters;
+	/**Collection of vector registers, sorted first by size and then by offset**/
+	private TreeSet<Register> sortedVectorRegisters;
 
 	class RegisterSizeKey {
 		Address address;
@@ -78,32 +74,21 @@ public class RegisterManager {
 		}
 	};
 
-	/**
-	 * Construct RegisterManager
-	 * @param registers all defined registers with appropriate parent-child relationships
-	 * properly established.
-	 * @param registerNameMap a complete name-to-register map including all register aliases
-	 * and alternate spellings (e.g., case-variations)
-	 */
-	RegisterManager(List<Register> registers, Map<String, Register> registerNameMap) {
-		this.registers = Collections.unmodifiableList(registers);
-		this.registerNameMap = Collections.unmodifiableMap(registerNameMap);
+	RegisterManager(Register[] cookedRegisters) {
+		registers = cookedRegisters;
 		initialize();
 	}
 
 	private void initialize() {
-		List<String> registerNameList = new ArrayList<String>();
-		List<Register> contextRegisterList = new ArrayList<Register>();
-		ArrayList<Register> registerListSortedBySize = new ArrayList<>(registers); // copy for sorting
-		Collections.sort(registerListSortedBySize, registerSizeComparator);
-		for (Register reg : registerListSortedBySize) {
-			String regName = reg.getName();
-			registerNameList.add(regName);
-			if (reg.isProcessorContext()) {
-				contextRegisterList.add(reg);
-				if (reg.isBaseRegister()) {
-					contextBaseRegister = reg;
-				}
+		List<Register> registerList = new ArrayList<Register>(Arrays.asList(registers));
+		Collections.sort(registerList, registerSizeComparator);
+		for (Register reg : registerList) {
+			registerNameMap.put(reg.getName(), reg);
+			for (String alias : reg.getAliases()) {
+				registerNameMap.put(alias, reg);
+			}
+			if (reg.isProcessorContext() && reg.isBaseRegister()) {
+				contextBaseRegister = reg;
 			}
 
 			Address addr = reg.getAddress();
@@ -125,13 +110,10 @@ public class RegisterManager {
 			}
 		}
 		// handle the register size 0 case;
-		Collections.reverse(registerListSortedBySize);
-		for (Register register : registerListSortedBySize) {
+		Collections.reverse(registerList);
+		for (Register register : registerList) {
 			sizeMap.put(new RegisterSizeKey(register.getAddress(), 0), register);
 		}
-		contextRegisters = Collections.unmodifiableList(contextRegisterList);
-		Collections.sort(registerNameList);
-		registerNames = Collections.unmodifiableList(registerNameList);
 	}
 
 	private void populateSizeMapBigEndian(Register reg) {
@@ -150,54 +132,33 @@ public class RegisterManager {
 	}
 
 	/**
-	 * Get context base-register
-	 * @return context base register or null if one has not been defined by the language.
+	 * Returns context base register or null if one has not been defined by the language.
 	 */
 	public Register getContextBaseRegister() {
 		return contextBaseRegister;
 	}
 
 	/**
-	 * Get unsorted unmodifiable list of all processor context registers (include base context register and children)
-	 * @return all processor context registers
-	 */
-	public List<Register> getContextRegisters() {
-		return contextRegisters;
-	}
-
-	/**
-	 * Get an alphabetical sorted unmodifiable list of original register names 
-	 * (including context registers).  Names correspond to orignal register
-	 * name and not aliases which may be defined.
-	 * 
-	 * @return alphabetical sorted unmodifiable list of original register names.
-	 */
-	public List<String> getRegisterNames() {
-		return registerNames;
-	}
-
-	/**
 	 * Returns the largest register located at the specified address
-	 * @param addr register address
-	 * @return register or null if not found
+	 * 
+	 * @param addr
+	 * @return largest register
 	 */
 	public Register getRegister(Address addr) {
-		AddressSpace space = addr.getAddressSpace();
-		if (space.isRegisterSpace() || space.hasMappedRegisters()) {
-			return sizeMap.get(new RegisterSizeKey(addr, 0));
+		if (!addr.isRegisterAddress() && !addr.getAddressSpace().hasMappedRegisters()) {
+			return null;
 		}
-		return null;
+		return sizeMap.get(new RegisterSizeKey(addr, 0));
 	}
 
 	/**
 	 * Returns all registers located at the specified address
 	 * 
-	 * @param addr register address
-	 * @return array of registers found (may be empty)
+	 * @param addr
+	 * @return largest register
 	 */
 	public Register[] getRegisters(Address addr) {
-		AddressSpace space = addr.getAddressSpace();
-		if (space.isRegisterSpace() || space.hasMappedRegisters()) {
+		if (addr.isRegisterAddress() || addr.getAddressSpace().hasMappedRegisters()) {
 			List<Register> list = registerAddressMap.get(getGlobalAddress(addr));
 			if (list != null) {
 				Register[] regs = new Register[list.size()];
@@ -216,55 +177,50 @@ public class RegisterManager {
 	}
 
 	/**
-	 * Get register by address and size
+	 * Returns the smallest register at the specified address whose size is 
+	 * greater than or equal the specified size.
 	 * @param addr register address
-	 * @param size register size
-	 * @return register or null if not found
+	 * @param size the size of the register (in bytes).  A value of 0 will return the 
+	 * largest register at the specified addr
+	 * @return register
 	 */
 	public Register getRegister(Address addr, int size) {
-		AddressSpace space = addr.getAddressSpace();
-		if (space.isRegisterSpace() || space.hasMappedRegisters()) {
-			return sizeMap.get(new RegisterSizeKey(addr, size));
+		if (!addr.isRegisterAddress() && !addr.getAddressSpace().hasMappedRegisters()) {
+			return null;
 		}
-		return null;
+		return sizeMap.get(new RegisterSizeKey(addr, size));
 	}
 
 	/**
-	 * Get register by name.  A semi-case-insensitive lookup is performed.
-	 * The specified name must match either the case-sensitive name or
-	 * be entirely lowercase or uppercase.
-	 * @param name register name
-	 * @return register or null if not found
+	 * Returns the register with the given name;
+	 * @param name the name of the register to retrieve
 	 */
 	public Register getRegister(String name) {
 		return registerNameMap.get(name);
 	}
 
 	/**
-	 * Get all registers as an unsorted unmodifiable list.
-	 * @return unmodifiable list of all registers defined
+	 * Return array of all registers.
+	 * @return all registers
 	 */
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		return registers;
 	}
 
 	/**
-	 * Get an unmodifiable list of all vector registers indentified by the processor specification
-	 * in sorted order based upon address and size.  
-	 * @return all vector registers as unmodifiable list
+	 * Returns the array of vector registers, sorted first by size and then by offset
+	 * @return sorted vector registers
 	 */
-	public List<Register> getSortedVectorRegisters() {
+	public Register[] getSortedVectorRegisters() {
 		if (sortedVectorRegisters == null) {
-			ArrayList<Register> list = new ArrayList<Register>();
-			for (Register reg : registers) {
+			sortedVectorRegisters = new TreeSet<Register>(RegisterManager::compareVectorRegisters);
+			for (Register reg : getRegisters()) {
 				if (reg.isVectorRegister()) {
-					list.add(reg);
+					sortedVectorRegisters.add(reg);
 				}
 			}
-			Collections.sort(list, RegisterManager::compareVectorRegisters);
-			sortedVectorRegisters = Collections.unmodifiableList(list);
 		}
-		return sortedVectorRegisters;
+		return sortedVectorRegisters.toArray(new Register[0]);
 	}
 
 	/**

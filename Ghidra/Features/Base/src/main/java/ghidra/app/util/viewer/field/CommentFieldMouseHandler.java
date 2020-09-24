@@ -31,8 +31,7 @@ public class CommentFieldMouseHandler implements FieldMouseHandlerExtension {
 
 	private final static Class<?>[] SUPPORTED_CLASSES =
 		new Class[] { CommentFieldLocation.class, EolCommentFieldLocation.class,
-			PlateFieldLocation.class, AutomaticCommentFieldLocation.class,
-			MemoryBlockStartFieldLocation.class };
+			PlateFieldLocation.class, AutomaticCommentFieldLocation.class };
 
 	@Override
 	public Class<?>[] getSupportedProgramLocations() {

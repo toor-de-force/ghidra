@@ -23,6 +23,7 @@ import org.jdom.input.SAXBuilder;
 import org.jdom.output.XMLOutputter;
 
 import ghidra.framework.store.*;
+import ghidra.util.datastruct.LongObjectHashtable;
 import ghidra.util.xml.GenericXMLOutputter;
 import ghidra.util.xml.XmlUtilities;
 
@@ -39,7 +40,7 @@ class CheckoutManager {
 	private long nextCheckoutId = 1;
 
 	// checkouts maps long checkoutId to ItemCheckoutStatus objects
-	private Map<Long, ItemCheckoutStatus> checkouts;
+	private LongObjectHashtable<ItemCheckoutStatus> checkouts;
 
 	/**
 	 * Constructor.
@@ -52,7 +53,7 @@ class CheckoutManager {
 	CheckoutManager(LocalFolderItem item, boolean create) throws IOException {
 		this.item = item;
 		if (create) {
-			checkouts = new HashMap<>();
+			checkouts = new LongObjectHashtable<ItemCheckoutStatus>();
 			writeCheckoutsFile();
 		}
 	}
@@ -163,7 +164,8 @@ class CheckoutManager {
 	 */
 	synchronized boolean isCheckedOut(int version) throws IOException {
 		validate();
-		for (long id : checkouts.keySet()) {
+		long[] ids = checkouts.getKeys();
+		for (long id : ids) {
 			ItemCheckoutStatus coStatus = checkouts.get(id);
 			if (coStatus.getCheckoutVersion() == version) {
 				return true;
@@ -197,9 +199,13 @@ class CheckoutManager {
 	 */
 	synchronized ItemCheckoutStatus[] getAllCheckouts() throws IOException {
 		validate();
-		List<ItemCheckoutStatus> list = new ArrayList<>(checkouts.values());
-		Collections.sort(list, (a, b) -> (int) (a.getCheckoutId() - b.getCheckoutId()));
-		return list.toArray(new ItemCheckoutStatus[list.size()]);
+		long[] ids = checkouts.getKeys();
+		Arrays.sort(ids);
+		ItemCheckoutStatus[] list = new ItemCheckoutStatus[ids.length];
+		for (int i = 0; i < ids.length; i++) {
+			list[i] = checkouts.get(ids[i]);
+		}
+		return list;
 	}
 
 	/**
@@ -213,6 +219,7 @@ class CheckoutManager {
 			checkouts = null;
 		}
 		if (checkouts == null) {
+			LongObjectHashtable<ItemCheckoutStatus> oldCheckouts = checkouts;
 			long oldNextCheckoutId = nextCheckoutId;
 			boolean success = false;
 			try {
@@ -222,7 +229,7 @@ class CheckoutManager {
 			finally {
 				if (!success) {
 					nextCheckoutId = oldNextCheckoutId;
-					checkouts = null;
+					checkouts = oldCheckouts;
 				}
 			}
 		}
@@ -236,7 +243,7 @@ class CheckoutManager {
 	@SuppressWarnings("unchecked")
 	private void readCheckoutsFile() throws IOException {
 
-		checkouts = new HashMap<>();
+		checkouts = new LongObjectHashtable<ItemCheckoutStatus>();
 
 		File checkoutsFile = getCheckoutsFile();
 		if (!checkoutsFile.exists()) {
@@ -310,11 +317,13 @@ class CheckoutManager {
 		Element root = new Element("CHECKOUT_LIST");
 		root.setAttribute("NEXT_ID", Long.toString(nextCheckoutId));
 
-		for (ItemCheckoutStatus status : checkouts.values()) {
+		long[] ids = checkouts.getKeys();
+		for (long id : ids) {
+			ItemCheckoutStatus coStatus = checkouts.get(id);
 			// TRANSIENT checkout data must not be persisted - the existence
 			// of such checkouts is retained in-memory only
-			if (status.getCheckoutType() != CheckoutType.TRANSIENT) {
-				root.addContent(getCheckoutElement(status));
+			if (coStatus.getCheckoutType() != CheckoutType.TRANSIENT) {
+				root.addContent(getCheckoutElement(coStatus));
 			}
 		}
 

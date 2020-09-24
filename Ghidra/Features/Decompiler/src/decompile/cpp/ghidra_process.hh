@@ -230,8 +230,9 @@ public:
   virtual void rawAction(void);
 };
 
-#ifdef __REMOTE_SOCKET__
-extern void connect_to_console(Funcdata *fd);
+#ifdef OPACTION_DEBUG
+extern void turn_on_debugging(Funcdata *fd);
+extern void turn_off_debugging(Funcdata *fd);
 #endif
 
 #endif

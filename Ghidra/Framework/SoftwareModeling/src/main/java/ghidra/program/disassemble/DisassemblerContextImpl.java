@@ -566,7 +566,7 @@ public class DisassemblerContextImpl implements DisassemblerContext {
 	}
 
 	@Override
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		return programContext.getRegisters();
 	}
 

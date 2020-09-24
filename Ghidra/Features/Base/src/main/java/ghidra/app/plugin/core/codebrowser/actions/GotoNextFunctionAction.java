@@ -23,9 +23,8 @@ import javax.swing.KeyStroke;
 import docking.action.KeyBindingData;
 import docking.action.MenuData;
 import docking.tool.ToolConstants;
-import ghidra.app.context.NavigatableActionContext;
-import ghidra.app.context.NavigatableContextAction;
 import ghidra.app.nav.Navigatable;
+import ghidra.app.plugin.core.codebrowser.CodeViewerActionContext;
 import ghidra.app.services.GoToService;
 import ghidra.app.util.HelpTopics;
 import ghidra.framework.plugintool.PluginTool;
@@ -34,7 +33,7 @@ import ghidra.program.model.listing.*;
 import ghidra.program.util.FunctionSignatureFieldLocation;
 import ghidra.util.HelpLocation;
 
-public class GotoNextFunctionAction extends NavigatableContextAction {
+public class GotoNextFunctionAction extends CodeViewerContextAction {
 
 	private PluginTool tool;
 
@@ -68,7 +67,7 @@ public class GotoNextFunctionAction extends NavigatableContextAction {
 	}
 
 	@Override
-	protected void actionPerformed(NavigatableActionContext context) {
+	protected void actionPerformed(CodeViewerActionContext context) {
 		Address address = context.getAddress();
 		Program program = context.getProgram();
 		Function function = getNextFunction(program, address);
@@ -80,7 +79,7 @@ public class GotoNextFunctionAction extends NavigatableContextAction {
 		if (service != null) {
 			FunctionSignatureFieldLocation location =
 				new FunctionSignatureFieldLocation(program, function.getEntryPoint(), null, 0,
-					function.getPrototypeString(false, false));
+ function.getPrototypeString(false, false));
 
 			Navigatable navigatable = context.getNavigatable();
 			service.goTo(navigatable, location, navigatable.getProgram());

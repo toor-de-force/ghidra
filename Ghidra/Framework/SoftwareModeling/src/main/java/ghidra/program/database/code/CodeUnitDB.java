@@ -17,7 +17,8 @@ package ghidra.program.database.code;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -752,7 +753,7 @@ abstract class CodeUnitDB extends DatabaseObject implements CodeUnit, ProcessorC
 	}
 
 	@Override
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		return programContext.getRegisters();
 	}
 

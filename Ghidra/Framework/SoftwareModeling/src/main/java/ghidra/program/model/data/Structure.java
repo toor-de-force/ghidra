@@ -17,6 +17,8 @@ package ghidra.program.model.data;
 
 import java.util.Comparator;
 
+import ghidra.util.exception.InvalidInputException;
+
 /**
  * The structure interface.
  * <p>
@@ -125,7 +127,7 @@ public interface Structure extends Composite {
 	 * <p>
 	 * Zero length bitfields may be inserted although they have no real affect for 
 	 * unaligned structures.  Only the resulting byte offset within the structure 
-	 * is of significance in determining its ordinal placement.
+	 * is of significance in determining its' ordinal placement.
 	 * <p> 
 	 * @param byteOffset the first byte offset within this structure which corresponds to the
 	 * first byte of the specified storage unit identified by its byteWidth.
@@ -164,8 +166,7 @@ public interface Structure extends Composite {
 	 * For example, suppose dt1 contains dt2. Therefore it is not valid
 	 * to insert dt1 to dt2 since this would cause a cyclic dependency.
 	 */
-	public DataTypeComponent insertAtOffset(int offset, DataType dataType, int length)
-			throws IllegalArgumentException;
+	public DataTypeComponent insertAtOffset(int offset, DataType dataType, int length);
 
 	/**
 	 * Inserts a new datatype at the specified offset into this structure.
@@ -184,7 +185,7 @@ public interface Structure extends Composite {
 	 * to insert dt1 to dt2 since this would cause a cyclic dependency.
 	 */
 	public DataTypeComponent insertAtOffset(int offset, DataType dataType, int length, String name,
-			String comment) throws IllegalArgumentException;
+			String comment);
 
 	/**
 	 * Deletes the component containing the specified offset in this structure.  If the offset
@@ -207,7 +208,7 @@ public interface Structure extends Composite {
 	 * @param index the index of the component to clear.
 	 * @throws ArrayIndexOutOfBoundsException if component ordinal is out of bounds
 	 */
-	public void clearComponent(int index) throws ArrayIndexOutOfBoundsException;
+	public void clearComponent(int index);
 
 	/**
 	 * Replaces the component at the given component index with a new component
@@ -226,8 +227,7 @@ public interface Structure extends Composite {
 	 * component or specify a {@link BitFieldDataType} will produce this error.
 	 * @throws ArrayIndexOutOfBoundsException if component index is out of bounds
 	 */
-	public DataTypeComponent replace(int index, DataType dataType, int length)
-			throws ArrayIndexOutOfBoundsException, IllegalArgumentException;
+	public DataTypeComponent replace(int index, DataType dataType, int length);
 
 	/**
 	 * Replaces the component at the given component index with a new component
@@ -249,7 +249,7 @@ public interface Structure extends Composite {
 	 * @throws ArrayIndexOutOfBoundsException if component index is out of bounds
 	 */
 	public DataTypeComponent replace(int index, DataType dataType, int length, String name,
-			String comment) throws ArrayIndexOutOfBoundsException, IllegalArgumentException;
+			String comment);
 
 	/**
 	 * Replaces the component at the specified byte offset with a new component
@@ -274,7 +274,21 @@ public interface Structure extends Composite {
 	 * component or specify a {@link BitFieldDataType} will produce this error.
 	 */
 	public DataTypeComponent replaceAtOffset(int offset, DataType dataType, int length, String name,
-			String comment) throws IllegalArgumentException;
+			String comment);
+
+	/**
+	 * Returns a list of all components that make up this data type excluding any trailing
+	 * flexible array component if present.
+	 * @return an array containing the components
+	 */
+	@Override
+	public abstract DataTypeComponent[] getComponents();
+
+	/**
+	 * Returns the list of components that are defined. (As opposed to "filler"
+	 * undefined bytes.).  Any trailing flexible array component will be omitted.
+	 */
+	public DataTypeComponent[] getDefinedComponents();
 
 	/**
 	 * Determine if a trailing flexible array component has been defined.
@@ -295,16 +309,31 @@ public interface Structure extends Composite {
 	 * @param name component field name or null for default name
 	 * @param comment component comment
 	 * @return updated flexible array component
-	 * @throws IllegalArgumentException if specified flexType is not permitted (e.g., 
-	 * self referencing or unsupported type)
 	 */
 	public DataTypeComponent setFlexibleArrayComponent(DataType flexType, String name,
-			String comment) throws IllegalArgumentException;
+			String comment);
 
 	/**
 	 * Remove the optional trailing flexible array component associated with this structure.
 	 */
 	public void clearFlexibleArrayComponent();
+
+	/**
+	 * Gets the number of component data types in this data type excluding any trailing flexible
+	 * array component if present. 
+	 * @return the number of components that make up this data prototype
+	 */
+	@Override
+	public abstract int getNumComponents();
+
+	/**
+	 * Returns the number of non-undefined components in this composite. For example, say
+	 * a structure has an int (4 bytes) at offset 0 and another int at offset 8.  This structure
+	 * would have 6 total components (one for each undefined between the two ints), but only
+	 * 2 defined components. Any trailing flexible array component will not be included in this count.
+	 * @return  the number of non-undefined components in this composite
+	 */
+	public abstract int getNumDefinedComponents();
 
 	/**
 	 * Increases the size of the structure by the given amount by adding undefined datatypes
@@ -314,16 +343,7 @@ public interface Structure extends Composite {
 	 */
 	public void growStructure(int amount);
 
-	/**
-	 * Sets the current packing value (usually a power of 2). A value of NOT_PACKING should be passed 
-	 * if this isn't a packed data type. Otherwise this value indicates a maximum alignment
-	 * for any component within this data type. Calling this method will cause the data type to
-	 * become an internally aligned data type.
-	 * (Same as {@link Composite#setPackingValue(int)})
-	 * @param maxAlignment the new packing value or 0 for NOT_PACKING.
-	 * A negative value will be treated the same as 0.
-	 */
-	public void pack(int maxAlignment);
+	public void pack(int maxAlignment) throws InvalidInputException;
 
 	/**
 	 * <code>BitOffsetComparator</code> provides ability to compare an normalized bit offset

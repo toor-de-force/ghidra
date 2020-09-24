@@ -15,12 +15,14 @@
  */
 package docking.widgets.table.threaded;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.SwingUtilities;
 
 import docking.widgets.table.AddRemoveListItem;
 import docking.widgets.table.TableSortingContext;
 import generic.concurrent.ConcurrentListenerSet;
-import ghidra.util.Swing;
 import ghidra.util.SystemUtilities;
 import ghidra.util.task.*;
 
@@ -33,11 +35,9 @@ import ghidra.util.task.*;
  * @param <T> the row type 
  */
 class ThreadedTableModelUpdateMgr<T> {
-
-	// make the delay large enough that a flurry of events will stay buffered
-	public final static int DELAY = 5000;
-	public final static int MAX_DELAY = 1000 * 60 * 20;
 	static final int TOO_MANY_ADD_REMOVES = 3000;
+	public final static int DELAY = 1000;
+	public final static int MAX_DELAY = 1000 * 60 * 20;
 
 	private ThreadedTableModel<T, ?> model;
 	private SwingUpdateManager addRemoveUpdater;
@@ -115,11 +115,49 @@ class ThreadedTableModelUpdateMgr<T> {
 		return addRemoveUpdater;
 	}
 
-	private int getMaxAddRemoveCount() {
-		// have the max count grow with the size of the table to prevent too many calls to reload()
-		int n = model.getRowCount();
-		int cuttoff = (int) (n * .1);
-		return Math.max(maxAddRemoveCount, cuttoff);
+	/**
+	 * Processes the accumulated list of add/remove items.
+	 * Called when the swing update manager decides its time to run.
+	 */
+	private void processAddRemoveItems() {
+		synchronized (addRemoveUpdater) {
+			if (addRemoveWaitList.isEmpty()) {
+				return;
+			}
+
+			// too many requests for add/remove triggers a full reload for efficiency
+			if (addRemoveWaitList.size() > maxAddRemoveCount) {
+				reload();
+				return;
+			}
+
+			pendingJob = new AddRemoveJob<>(model, addRemoveWaitList, monitor);
+			addRemoveWaitList = new ArrayList<>();
+			runJob();
+		}
+	}
+
+	/**
+	 * Called when there is work to be done.  It creates a thread if none is running to do the
+	 * work that is built into the pending job.
+	 */
+	private void runJob() {
+		synchronized (addRemoveUpdater) {
+			if (thread != null) {
+				return; // if thread exists, it will handle any pending job
+			}
+
+			if (pendingJob == null) {
+				return; // nothing to do!
+			}
+
+			// Ok, we have to create a thread to process the pending job
+			thread = new Thread(threadRunnable,
+				"Threaded Table Model Update Manager: " + model.getName());
+
+			thread.start();
+			SwingUtilities.invokeLater(notifyUpdating);
+		}
 	}
 
 	/**
@@ -146,7 +184,8 @@ class ThreadedTableModelUpdateMgr<T> {
 	void reload() {
 		synchronized (addRemoveUpdater) {
 			cancelAllJobs();
-			runJob(new LoadJob<>(model, monitor));
+			pendingJob = new LoadJob<>(model, monitor);
+			runJob();
 		}
 	}
 
@@ -154,7 +193,8 @@ class ThreadedTableModelUpdateMgr<T> {
 		synchronized (addRemoveUpdater) {
 			cancelAllJobs();
 			TableData<T> tableData = TableData.createFullDataset(data);
-			runJob(new LoadSpecificDataJob<>(model, monitor, tableData));
+			pendingJob = new LoadSpecificDataJob<>(model, monitor, tableData);
+			runJob();
 		}
 	}
 
@@ -185,7 +225,8 @@ class ThreadedTableModelUpdateMgr<T> {
 				return;
 			}
 
-			runJob(new SortJob<>(model, monitor, sortingContext, forceSort));
+			pendingJob = new SortJob<>(model, monitor, sortingContext, forceSort);
+			runJob();
 		}
 	}
 
@@ -212,7 +253,8 @@ class ThreadedTableModelUpdateMgr<T> {
 				return;
 			}
 
-			runJob(new FilterJob<>(model, monitor));
+			pendingJob = new FilterJob<>(model, monitor);
+			runJob();
 		}
 	}
 
@@ -228,41 +270,21 @@ class ThreadedTableModelUpdateMgr<T> {
 	void addRemove(AddRemoveListItem<T> item) {
 		synchronized (addRemoveUpdater) {
 			if (pendingJob != null) {
-				pendingJob.addRemove(item, getMaxAddRemoveCount());
-
-				// push the updater back to avoid constant reloading
-				addRemoveUpdater.updateLater();
+				pendingJob.addRemove(item, maxAddRemoveCount);
 				return;
 			}
 
-			if (addRemoveWaitList.isEmpty() && thread == null) {
-				Swing.runLater(notifyPending);
-			}
-
-			addRemoveWaitList.add(item);
-			addRemoveUpdater.update();
-		}
-	}
-
-	/**
-	 * Processes the accumulated list of add/remove items.
-	 * Called when the swing update manager decides its time to run.
-	 */
-	private void processAddRemoveItems() {
-		synchronized (addRemoveUpdater) {
-
-			if (addRemoveWaitList.isEmpty()) {
-				return;
-			}
-
-			// too many requests for add/remove triggers a full reload for efficiency
-			if (addRemoveWaitList.size() > getMaxAddRemoveCount()) {
+			if (addRemoveWaitList.size() > maxAddRemoveCount) {
 				reload();
 				return;
 			}
 
-			runJob(new AddRemoveJob<>(model, addRemoveWaitList, monitor));
-			addRemoveWaitList = new ArrayList<>();
+			if (addRemoveWaitList.isEmpty() && thread == null) {
+				SwingUtilities.invokeLater(notifyPending);
+			}
+
+			addRemoveWaitList.add(item);
+			addRemoveUpdater.update();
 		}
 	}
 
@@ -335,27 +357,6 @@ class ThreadedTableModelUpdateMgr<T> {
 	}
 
 	/**
-	 * Called when there is work to be done.  It creates a thread if none is running to do the
-	 * work that is built into the pending job.
-	 */
-	private void runJob(TableUpdateJob<T> job) {
-		synchronized (addRemoveUpdater) {
-			// Create a thread to process the pending job
-			pendingJob = Objects.requireNonNull(job);
-
-			if (thread != null) {
-				return; // if thread exists, it will handle any pending job
-			}
-
-			thread = new Thread(threadRunnable,
-				"Threaded Table Model Update Manager: " + model.getName());
-
-			thread.start();
-			Swing.runLater(notifyUpdating);
-		}
-	}
-
-	/**
 	 * Transitions the pending job to the current job is a thread safe way.
 	 * @return the new current job.
 	 */
@@ -379,22 +380,22 @@ class ThreadedTableModelUpdateMgr<T> {
 	 */
 	private void jobDone() {
 
-		// This synchronized is not needed, as this method is only called from within a 
+		// This synchronized is not need, as this method is only called from within a 
 		// synchronized block.  But, it feels better to be explicit here to signal that 
 		// synchronization is needed.  
 		synchronized (addRemoveUpdater) {
 
 			boolean isCancelled = monitor.isCancelled();
 			if (isCancelled) {
-				Swing.runLater(notifyCancelled);
+				SwingUtilities.invokeLater(notifyCancelled);
 			}
 			else {
-				Swing.runLater(notifyDone);
+				SwingUtilities.invokeLater(notifyDone);
 			}
 
 			thread = null;
 			if (!addRemoveWaitList.isEmpty()) {
-				Swing.runLater(notifyPending);
+				SwingUtilities.invokeLater(notifyPending);
 			}
 		}
 	}

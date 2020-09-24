@@ -639,8 +639,6 @@ public class DataTypeMerge4Test extends AbstractDataTypeMergeTest {
 
 		chooseOption(DataTypeMergeManager.OPTION_MY);// Foo keeps its Bar, which creates Foo.conflict.
 
-		close(waitForWindow("Structure Update Failed")); // expected dependency error on Bar (2 occurances of Bar use)
-
 		waitForCompletion();
 
 		// should be two .conflict data types
@@ -1606,9 +1604,7 @@ public class DataTypeMerge4Test extends AbstractDataTypeMergeTest {
 
 		// Conflict on Bar
 		chooseOption(DataTypeMergeManager.OPTION_MY);// choose MY Bar
-
-		// NOTE: while Foo grows because of Bar it was not explicitly change in 
-		// MY so no conflict should be detected for Foo
+		chooseOption(DataTypeMergeManager.OPTION_MY);// choose MY Foo
 
 		waitForCompletion();
 
@@ -2008,6 +2004,9 @@ public class DataTypeMerge4Test extends AbstractDataTypeMergeTest {
 
 		Structure foo = (Structure) dtm.getDataType(new CategoryPath("/MISC"), "Foo");
 		DataTypeComponent[] dtcs = foo.getDefinedComponents();
+		for (DataTypeComponent dtc : dtcs) {
+			System.out.println(dtc.getDataType().getDisplayName());
+		}
 		assertEquals(3, dtcs.length);
 		assertEquals("Structure Foo was the wrong size.", 18, foo.getLength());
 

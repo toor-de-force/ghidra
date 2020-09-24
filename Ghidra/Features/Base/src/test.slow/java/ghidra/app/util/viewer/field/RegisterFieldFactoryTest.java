@@ -15,7 +15,8 @@
  */
 package ghidra.app.util.viewer.field;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -105,10 +106,11 @@ public class RegisterFieldFactoryTest extends AbstractGhidraHeadedIntegrationTes
 	}
 
 	private List<Register> getNonContextRegisters(ProgramContext pc) {
+		Register[] regs = pc.getRegisters();
 		List<Register> nonContextRegs = new ArrayList<Register>();
-		for (Register reg : pc.getRegisters()) {
-			if (!reg.isProcessorContext()) {
-				nonContextRegs.add(reg);
+		for (int i = 0; i < regs.length; i++) {
+			if (!regs[i].isProcessorContext()) {
+				nonContextRegs.add(regs[i]);
 			}
 		}
 		return nonContextRegs;

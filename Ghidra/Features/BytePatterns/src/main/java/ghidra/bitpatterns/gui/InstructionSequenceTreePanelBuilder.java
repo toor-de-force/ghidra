@@ -91,13 +91,12 @@ public class InstructionSequenceTreePanelBuilder extends ContextRegisterFilterab
 		applyPercentageFilterButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				NumberInputDialog numberDialog =
-					new NumberInputDialog(PERCENTAGE_FILTER_TITLE, DEFAULT_PERCENTAGE_FILTER, 0,
-						100);
-				numberDialog.show();
+				NumberInputDialog percentageFilterCreater =
+					new NumberInputDialog(PERCENTAGE_FILTER_TITLE, null, DEFAULT_PERCENTAGE_FILTER);
+				percentageFilterCreater.show();
 				double value = 0.0;
-				if (!numberDialog.wasCancelled()) {
-					value = numberDialog.getValue();
+				if (!percentageFilterCreater.wasCancelled()) {
+					value = percentageFilterCreater.getValue();
 				}
 				percentageFilter = new PercentageFilter(value);
 				applyFilterAction();
@@ -193,7 +192,7 @@ public class InstructionSequenceTreePanelBuilder extends ContextRegisterFilterab
 	}
 
 	/**
-	 * Returns the selection path of the {@link FunctionBitPatternsGTree} associated with this panel.
+	 * Returns the selection path of the {@link FunctionBitPatternGTree} associated with this panel.
 	 * @return the selection path
 	 */
 	public TreePath getSelectionPath() {

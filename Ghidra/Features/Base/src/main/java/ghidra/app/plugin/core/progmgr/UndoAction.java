@@ -15,10 +15,12 @@
  */
 package ghidra.app.plugin.core.progmgr;
 
+import java.awt.event.InputEvent;
 import java.io.IOException;
 
 import javax.swing.Icon;
 
+import docking.ActionContext;
 import docking.action.*;
 import docking.tool.ToolConstants;
 import ghidra.app.context.ProgramActionContext;
@@ -44,7 +46,7 @@ public class UndoAction extends ProgramContextAction {
 		setMenuBarData(menuData);
 		setToolBarData(new ToolBarData(icon, "Undo"));
 		setDescription("Undo");
-		setKeyBindingData(new KeyBindingData("ctrl Z"));
+		setKeyBindingData(new KeyBindingData('Z', InputEvent.CTRL_MASK));
 	}
 
 	@Override
@@ -67,39 +69,27 @@ public class UndoAction extends ProgramContextAction {
 		}
 	}
 
-	/**
-	 * updates the menu name of the action as the undo stack changes
-	 * <P>
-	 * NOTE: currently, we must manage the enablement explicitly
-	 * because contextChanged is not called for data changes. Ideally, the enablement
-	 * would be handled by the context, but for now it doesn't work
-	 *
-	 * @param program the program
-	 */
-	public void update(Program program) {
-
-		if (program == null) {
-			getMenuBarData().setMenuItemName("Undo ");
-			setDescription("");
-			setEnabled(false);
-		}
-		if (program != null && program.canUndo()) {
+	@Override
+	protected boolean isEnabledForContext(ProgramActionContext context) {
+		Program program = context.getProgram();
+		if (program.canUndo()) {
 			String programName = program.getDomainFile().getName();
 			getMenuBarData().setMenuItemName("Undo " + programName);
 			String tip = HTMLUtilities.toWrappedHTML(
 				"Undo " + HTMLUtilities.escapeHTML(program.getUndoName()));
 			setDescription(tip);
-			setEnabled(true);
+			return true;
 		}
-		else {
-			setDescription("Undo");
-			setEnabled(false);
-		}
+		return false;
 	}
 
 	@Override
-	protected boolean isEnabledForContext(ProgramActionContext context) {
-		Program program = context.getProgram();
-		return program.canUndo();
+	public boolean isEnabledForContext(ActionContext actionContext) {
+		if (!super.isEnabledForContext(actionContext)) {
+			setDescription("Undo");
+			getMenuBarData().setMenuItemName("Undo");
+			return false;
+		}
+		return true;
 	}
 }

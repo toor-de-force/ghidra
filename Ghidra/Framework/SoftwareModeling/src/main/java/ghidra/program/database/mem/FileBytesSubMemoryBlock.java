@@ -18,7 +18,8 @@ package ghidra.program.database.mem;
 import java.io.IOException;
 
 import db.Record;
-import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.mem.*;
 
 /**
  * Class for handling {@link FileBytes} memory sub blocks (blocks whose bytes are backed by a FileBytes object
@@ -29,8 +30,8 @@ class FileBytesSubMemoryBlock extends SubMemoryBlock {
 
 	FileBytesSubMemoryBlock(MemoryMapDBAdapter adapter, Record record) throws IOException {
 		super(adapter, record);
-		long fileBytesID = record.getLongValue(MemoryMapDBAdapter.SUB_INT_DATA1_COL);
-		fileBytesOffset = record.getLongValue(MemoryMapDBAdapter.SUB_LONG_DATA2_COL);
+		long fileBytesID = record.getLongValue(MemoryMapDBAdapter.SUB_SOURCE_ID_COL);
+		fileBytesOffset = record.getLongValue(MemoryMapDBAdapter.SUB_SOURCE_OFFSET_COL);
 		fileBytes = adapter.getMemoryMap().getLayeredFileBytes(fileBytesID);
 	}
 
@@ -95,6 +96,11 @@ class FileBytesSubMemoryBlock extends SubMemoryBlock {
 	}
 
 	@Override
+	protected MemoryBlockType getType() {
+		return MemoryBlockType.DEFAULT;
+	}
+
+	@Override
 	protected SubMemoryBlock split(long memBlockOffset) throws IOException {
 		// convert from offset in block to offset in this sub block
 		int offset = (int) (memBlockOffset - subBlockOffset);
@@ -103,7 +109,7 @@ class FileBytesSubMemoryBlock extends SubMemoryBlock {
 		record.setLongValue(MemoryMapDBAdapter.SUB_LENGTH_COL, subBlockLength);
 		adapter.updateSubBlockRecord(record);
 
-		int fileBytesID = record.getIntValue(MemoryMapDBAdapter.SUB_INT_DATA1_COL);
+		int fileBytesID = record.getIntValue(MemoryMapDBAdapter.SUB_SOURCE_ID_COL);
 		Record newSubRecord = adapter.createSubBlockRecord(0, 0, newLength,
 			MemoryMapDBAdapter.SUB_TYPE_FILE_BYTES, fileBytesID, fileBytesOffset + offset);
 
@@ -121,6 +127,16 @@ class FileBytesSubMemoryBlock extends SubMemoryBlock {
 	@Override
 	protected boolean uses(FileBytes fb) {
 		return fileBytes.equals(fb);
+	}
+
+	@Override
+	protected ByteSourceRangeList getByteSourceRangeList(MemoryBlock block, Address start,
+			long memBlockOffset,
+			long size) {
+		long sourceId = fileBytes.getId();
+		ByteSourceRange bsRange = new ByteSourceRange(block, start, size, sourceId,
+			fileBytesOffset + memBlockOffset - subBlockOffset);
+		return new ByteSourceRangeList(bsRange);
 	}
 
 }

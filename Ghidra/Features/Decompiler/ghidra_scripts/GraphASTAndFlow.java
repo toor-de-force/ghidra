@@ -18,40 +18,40 @@
 
 import java.util.*;
 
+import ghidra.program.model.graph.GraphEdge;
+import ghidra.program.model.graph.GraphVertex;
 import ghidra.program.model.pcode.*;
-import ghidra.service.graph.AttributedEdge;
-import ghidra.service.graph.AttributedVertex;
 
 public class GraphASTAndFlow extends GraphAST {
 
 	@Override
 	protected void buildGraph() {
 
-		HashMap<Integer, AttributedVertex> vertices = new HashMap<>();
+		HashMap<Integer, GraphVertex> vertices = new HashMap<Integer, GraphVertex>();
 
+		edgecount = 0;
 		Iterator<PcodeOpAST> opiter = getPcodeOpIterator();
-		HashMap<PcodeOp, AttributedVertex> map = new HashMap<PcodeOp, AttributedVertex>();
+		HashMap<PcodeOp, GraphVertex> map = new HashMap<PcodeOp, GraphVertex>();
 		while (opiter.hasNext()) {
 			PcodeOpAST op = opiter.next();
-			AttributedVertex o = createOpVertex(op);
+			GraphVertex o = createOpVertex(op);
 			map.put(op, o);
 			for (int i = 0; i < op.getNumInputs(); ++i) {
 				if ((i == 0) &&
 					((op.getOpcode() == PcodeOp.LOAD) || (op.getOpcode() == PcodeOp.STORE))) {
 					continue;
 				}
-				if ((i == 1) && (op.getOpcode() == PcodeOp.INDIRECT)) {
+				if ((i == 1)&&(op.getOpcode() == PcodeOp.INDIRECT))
 					continue;
-				}
 				VarnodeAST vn = (VarnodeAST) op.getInput(i);
 				if (vn != null) {
-					AttributedVertex v = getVarnodeVertex(vertices, vn);
+					GraphVertex v = getVarnodeVertex(vertices, vn);
 					createEdge(v, o);
 				}
 			}
 			VarnodeAST outvn = (VarnodeAST) op.getOutput();
 			if (outvn != null) {
-				AttributedVertex outv = getVarnodeVertex(vertices, outvn);
+				GraphVertex outv = getVarnodeVertex(vertices, outvn);
 				if (outv != null) {
 					createEdge(o, outv);
 				}
@@ -59,8 +59,8 @@ public class GraphASTAndFlow extends GraphAST {
 		}
 		opiter = getPcodeOpIterator();
 		HashSet<PcodeBlockBasic> seenParents = new HashSet<PcodeBlockBasic>();
-		HashMap<PcodeBlock, AttributedVertex> first = new HashMap<>();
-		HashMap<PcodeBlock, AttributedVertex> last = new HashMap<>();
+		HashMap<PcodeBlock, GraphVertex> first = new HashMap<PcodeBlock, GraphVertex>();
+		HashMap<PcodeBlock, GraphVertex> last = new HashMap<PcodeBlock, GraphVertex>();
 		while (opiter.hasNext()) {
 			PcodeOpAST op = opiter.next();
 			PcodeBlockBasic parent = op.getParent();
@@ -76,7 +76,7 @@ public class GraphASTAndFlow extends GraphAST {
 					first.put(parent, map.get(next));
 				}
 				if (prev != null && map.containsKey(prev) && map.containsKey(next)) {
-					AttributedEdge edge = createEdge(map.get(prev), map.get(next));
+					GraphEdge edge = createEdge(map.get(prev), map.get(next));
 					edge.setAttribute(COLOR_ATTRIBUTE, "Black");
 				}
 				prev = next;
@@ -91,10 +91,18 @@ public class GraphASTAndFlow extends GraphAST {
 			for (int i = 0; i < block.getInSize(); i++) {
 				PcodeBlock in = block.getIn(i);
 				if (last.containsKey(in)) {
-					AttributedEdge edge = createEdge(last.get(in), first.get(block));
+					GraphEdge edge = createEdge(last.get(in), first.get(block));
 					edge.setAttribute(COLOR_ATTRIBUTE, "Red");
 				}
 			}
+// All outs were already handled by the ins!  Don't make two links!
+//			for (int i = 0; i < block.getOutSize(); i++) {
+//				PcodeBlock out = block.getOut(i);
+//				if (first.containsKey(out)) {
+//					GraphEdge edge = createEdge(last.get(block), first.get(out));
+//					edge.setAttribute(COLOR_ATTRIBUTE, "Red");
+//				}
+//			}
 		}
 	}
 

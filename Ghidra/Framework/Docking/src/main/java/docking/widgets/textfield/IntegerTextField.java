@@ -161,15 +161,14 @@ public class IntegerTextField {
 	 * <P> If using this method, it is highly recommended that you set the max value to {@link Integer#MAX_VALUE}
 	 * or lower.
 	 *
-	 * @return the current value as an int. Or 0 if there is no value
-	 * @throws ArithmeticException if the value in this field will not fit into an int
+	 * @return the current value as an int. Or 0 if there is no value.
 	 */
 	public int getIntValue() {
 		BigInteger currentValue = getValue();
 		if (currentValue == null) {
 			return 0;
 		}
-		return currentValue.intValueExact();
+		return currentValue.intValue();
 	}
 
 	/**
@@ -181,15 +180,14 @@ public class IntegerTextField {
 	 * <P> If using this method, it is highly recommended that you set the max value to {@link Long#MAX_VALUE}
 	 * or lower.
 	 *
-	 * @return the current value as a long. Or 0 if there is no value
-	 * @throws ArithmeticException if the value in this field will not fit into a long
+	 * @return the current value as a long. Or 0 if there is no value.
 	 */
 	public long getLongValue() {
 		BigInteger currentValue = getValue();
 		if (currentValue == null) {
 			return 0;
 		}
-		return currentValue.longValueExact();
+		return currentValue.longValue();
 	}
 
 	/**

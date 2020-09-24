@@ -224,16 +224,6 @@ void Symbol::checkSizeTypeLock(void)
     dispflags |= size_typelock;
 }
 
-/// \param val is \b true if we are the "this" pointer
-void Symbol::setThisPointer(bool val)
-
-{
-  if (val)
-    dispflags |= is_this_ptr;
-  else
-    dispflags &= ~((uint4)is_this_ptr);
-}
-
 /// The name for a Symbol can be unspecified.  See ScopeInternal::buildUndefinedName
 /// \return \b true if the name of \b this is undefined
 bool Symbol::isNameUndefined(void) const
@@ -305,32 +295,18 @@ int4 Symbol::getMapEntryPosition(const SymbolEntry *entry) const
   return -1;
 }
 
-/// For a given context scope where \b this Symbol is used, determine how many elements of
-/// the full namespace path need to be printed to correctly distinguish it.
-/// A value of 0 means the base symbol name is visible and not overridden in the context scope.
+/// A value of 0 means the base Symbol name is visible and not overridden in the given use scope.
 /// A value of 1 means the base name may be overridden, but the parent scope name is not.
-/// The minimal number of names that distinguishes the symbol name uniquely within the
+/// The minimual number of names that distinguishes \b this Symbol uniquely within the
 /// use scope is returned.
-/// \param useScope is the given scope where the symbol is being used
-/// \return the number of (extra) names needed to distinguish the symbol
+/// \param useScope is the given scope where \b this Symbol is being used
+/// \return the number of (extra) names needed to distinguish \b this Symbol
 int4 Symbol::getResolutionDepth(const Scope *useScope) const
 
 {
   if (scope == useScope) return 0;	// Symbol is in scope where it is used
-  if (useScope == (const Scope *)0) {	// Treat null useScope as resolving the full path
-    const Scope *point = scope;
-    int4 count = 0;
-    while(point != (const Scope *)0) {
-      count += 1;
-      point = point->getParent();
-    }
-    return count-1;	// Don't print global scope
-  }
-  if (depthScope == useScope)
-    return depthResolution;
-  depthScope = useScope;
   const Scope *distinguishScope = scope->findDistinguishingScope(useScope);
-  depthResolution = 0;
+  int4 depth = 0;
   string distinguishName;
   const Scope *terminatingScope;
   if (distinguishScope == (const Scope *)0) {	// Symbol scope is ancestor of use scope
@@ -341,15 +317,15 @@ int4 Symbol::getResolutionDepth(const Scope *useScope) const
     distinguishName = distinguishScope->getName();
     const Scope *currentScope = scope;
     while(currentScope != distinguishScope) {	// For any scope up to the distinguishing scope
-      depthResolution += 1;			// Print its name
+      depth += 1;				// Print its name
       currentScope = currentScope->getParent();
     }
-    depthResolution += 1;		// Also print the distinguishing scope name
+    depth += 1;		// Also print the distinguishing scope name
     terminatingScope = distinguishScope->getParent();
   }
   if (useScope->isNameUsed(distinguishName,terminatingScope))
-    depthResolution += 1;		// Name was overridden, we need one more distinguishing name
-  return depthResolution;
+    depth += 1;		// Name was overridden, we need one more distinguishing name
+  return depth;
 }
 
 /// \param s is the output stream
@@ -372,8 +348,6 @@ void Symbol::saveXmlHeader(ostream &s) const
     a_v_b(s,"hiddenretparm",true);
   if ((dispflags&isolate)!=0)
     a_v_b(s,"merge",false);
-  if ((dispflags&is_this_ptr)!=0)
-    a_v_b(s,"thisptr",true);
   int4 format = getDisplayFormat();
   if (format != 0) {
     s << " format=\"";
@@ -472,10 +446,6 @@ void Symbol::restoreXmlHeader(const Element *el)
 	if (attName == "typelock") {
 	  if (xml_readbool(el->getAttributeValue(i)))
 	    flags |= Varnode::typelock;
-	}
-	else if (attName == "thisptr") {
-	  if (xml_readbool(el->getAttributeValue(i)))
-	    dispflags |= is_this_ptr;
 	}
 	break;
       case 'v':
@@ -594,7 +564,7 @@ Funcdata *FunctionSymbol::getFunction(void)
 {
   if (fd != (Funcdata *)0) return fd;
   SymbolEntry *entry = getFirstWholeMap();
-  fd = new Funcdata(name,scope,entry->getAddr(),this);
+  fd = new Funcdata(name,scope,entry->getAddr());
   return fd;
 }
 
@@ -616,7 +586,7 @@ void FunctionSymbol::restoreXml(const Element *el)
 
 {
   if (el->getName() == "function") {
-    fd = new Funcdata("",scope,Address(),this);
+    fd = new Funcdata("",scope,Address());
     symbolId = fd->restoreXml(el);
     name = fd->getName();
     if (consumeSize < fd->getSize()) {
@@ -1085,23 +1055,13 @@ void Scope::removeRange(AddrSpace *spc,uintb first,uintb last)
 /// In particular, the SymbolEntry is assumed to map the entire Symbol.
 /// \param entry is the given SymbolEntry
 /// \return a SymbolEntry which has been fully integrated
-SymbolEntry *Scope::addMap(SymbolEntry &entry)
+SymbolEntry *Scope::addMap(const SymbolEntry &entry)
 
 {
   // First set properties of this symbol based on scope
   //  entry.symbol->flags |= Varnode::mapped;
   if (isGlobal())
     entry.symbol->flags |= Varnode::persist;
-  else if (!entry.addr.isInvalid()) {
-    // If this is not a global scope, but the address is in the global discovery range
-    // we still mark the symbol as persistent
-    Scope *glbScope = glb->symboltab->getGlobalScope();
-    Address addr;
-    if (glbScope->inScope(entry.addr, 1, addr)) {
-      entry.symbol->flags |= Varnode::persist;
-      entry.uselimit.clear();	// FIXME: Kludge for incorrectly generated XML
-    }
-  }
 
   SymbolEntry *res;
   int4 consumeSize = entry.symbol->getBytesConsumed();
@@ -1417,23 +1377,41 @@ void Scope::getNameSegments(vector<string> &vec) const
 }
 
 /// Put the parent scopes of \b this into an array in order, starting with the global scope.
+/// This scope itself will not be in the array.
 /// \param vec is storage for the array of scopes
-void Scope::getScopePath(vector<const Scope *> &vec) const
+void Scope::getScopePath(vector<Scope *> &vec) const
 
 {
   int4 count = 0;
-  const Scope *cur = this;
-  while(cur != (const Scope *)0) {	// Count number of elements in path
+  Scope *cur = parent;
+  while(cur != (Scope *)0) {	// Count number of elements in path
     count += 1;
     cur = cur->parent;
   }
   vec.resize(count);
-  cur = this;
-  while(cur != (const Scope *)0) {
+  cur = parent;
+  while(cur != (Scope *)0) {
     count -= 1;
     vec[count] = cur;
     cur = cur->parent;
   }
+}
+
+/// Test for the presence of a symbol with the given name in either \b this scope or
+/// an ancestor scope up to but not including the given terminating scope.
+/// If the name is used \b true is returned.
+/// \param nm is the given name to test
+/// \param op2 is the terminating ancestor scope (or null)
+bool Scope::isNameUsed(const string &nm,const Scope *op2) const
+
+{
+  const Scope *currentScope = this;
+  while(currentScope != op2) {
+    if (currentScope->isNameUsed(name))
+      return true;
+    currentScope = currentScope->parent;
+  }
+  return false;
 }
 
 /// Any two scopes share at least the \e global scope as a common ancestor. We find the first scope
@@ -1444,12 +1422,12 @@ void Scope::getScopePath(vector<const Scope *> &vec) const
 const Scope *Scope::findDistinguishingScope(const Scope *op2) const
 
 {
-  if (this == op2) return (const Scope *)0;	// Quickly check most common cases
+  if (this == op2) return (Scope *)0;	// Quickly check most common cases
   if (parent == op2) return this;
-  if (op2->parent == this) return (const Scope *)0;
+  if (op2->parent == this) return op2;
   if (parent == op2->parent) return this;
-  vector<const Scope *> thisPath;
-  vector<const Scope *> op2Path;
+  vector<Scope *> thisPath;
+  vector<Scope *> op2Path;
   getScopePath(thisPath);
   op2->getScopePath(op2Path);
   int4 min = thisPath.size();
@@ -1462,7 +1440,7 @@ const Scope *Scope::findDistinguishingScope(const Scope *op2) const
   if (min < thisPath.size())
     return thisPath[min];	// thisPath matches op2Path but is longer
   if (min < op2Path.size())
-    return (const Scope *)0;	// op2Path matches thisPath but is longer
+    return (Scope *)0;		// op2Path matches thisPath but is longer
   return this;			// ancestor paths are identical (only base scopes differ)
 }
 
@@ -1475,7 +1453,7 @@ Symbol *Scope::addSymbol(const string &name,Datatype *ct)
 {
   Symbol *sym;
 
-  sym = new Symbol(owner,name,ct);
+  sym = new Symbol(this,name,ct);
   addSymbolInternal(sym);		// Let this scope lay claim to the new object
   return sym;
 }
@@ -1496,7 +1474,7 @@ SymbolEntry *Scope::addSymbol(const string &name,Datatype *ct,
 {
   Symbol *sym;
 
-  sym = new Symbol(owner,name,ct);
+  sym = new Symbol(this,name,ct);
   addSymbolInternal(sym);
   return addMapPoint(sym,addr,usepoint);
 }
@@ -1531,19 +1509,19 @@ Symbol *Scope::addMapSym(const Element *el)
   Symbol *sym;
   const string &symname( subel->getName() );
   if (symname == "symbol")
-    sym = new Symbol(owner);
+    sym = new Symbol(this);
   else if (symname == "dynsymbol")
-    sym = new Symbol(owner);
+    sym = new Symbol(this);
   else if (symname == "equatesymbol")
-    sym = new EquateSymbol(owner);
+    sym = new EquateSymbol(this);
   else if (symname == "function")
-    sym = new FunctionSymbol(owner,glb->min_funcsymbol_size);
+    sym = new FunctionSymbol(this,glb->min_funcsymbol_size);
   else if (symname == "functionshell")
-    sym = new FunctionSymbol(owner,glb->min_funcsymbol_size);
+    sym = new FunctionSymbol(this,glb->min_funcsymbol_size);
   else if (symname == "labelsym")
-    sym = new LabSymbol(owner);
+    sym = new LabSymbol(this);
   else if (symname == "externrefsymbol")
-    sym = new ExternRefSymbol(owner);
+    sym = new ExternRefSymbol(this);
   else
     throw LowlevelError("Unknown symbol type: "+symname);
   try {		// Protect against duplicate scope errors
@@ -1585,7 +1563,7 @@ FunctionSymbol *Scope::addFunction(const Address &addr,const string &nm)
     errmsg += " overlaps object: "+overlap->getSymbol()->getName();
     glb->printMessage(errmsg);
   }
-  sym = new FunctionSymbol(owner,nm,glb->min_funcsymbol_size);
+  sym = new FunctionSymbol(this,nm,glb->min_funcsymbol_size);
   addSymbolInternal(sym);
   // Map symbol to base address of function
   // there is no limit on the applicability of this map within scope
@@ -1606,7 +1584,7 @@ ExternRefSymbol *Scope::addExternalRef(const Address &addr,const Address &refadd
 {
   ExternRefSymbol *sym;
 
-  sym = new ExternRefSymbol(owner,refaddr,nm);
+  sym = new ExternRefSymbol(this,refaddr,nm);
   addSymbolInternal(sym);
   // Map symbol to given address
   // there is no limit on applicability of this map within scope
@@ -1634,7 +1612,7 @@ LabSymbol *Scope::addCodeLabel(const Address &addr,const string &nm)
     errmsg += " overlaps object: "+overlap->getSymbol()->getName();
     glb->printMessage(errmsg);
   }
-  sym = new LabSymbol(owner,nm);
+  sym = new LabSymbol(this,nm);
   addSymbolInternal(sym);
   addMapPoint(sym,addr,Address());
   return sym;
@@ -1654,7 +1632,7 @@ Symbol *Scope::addDynamicSymbol(const string &nm,Datatype *ct,const Address &cad
 {
   Symbol *sym;
 
-  sym = new Symbol(owner,nm,ct);
+  sym = new Symbol(this,nm,ct);
   addSymbolInternal(sym);
   RangeList rnglist;
   if (!caddr.isInvalid())
@@ -1716,12 +1694,6 @@ bool Scope::isReadOnly(const Address &addr,int4 size,const Address &usepoint) co
   uint4 flags;
   queryProperties(addr,size,usepoint,flags);
   return ((flags & Varnode::readonly)!=0);
-}
-
-Scope *ScopeInternal::buildSubScope(const string &nm)
-
-{
-  return new ScopeInternal(nm,glb);
 }
 
 void ScopeInternal::addSymbolInternal(Symbol *sym)
@@ -1860,17 +1832,12 @@ list<SymbolEntry>::iterator ScopeInternal::endDynamic(void)
 /// \param nm is the name of the Scope
 /// \param g is the Architecture it belongs to
 ScopeInternal::ScopeInternal(const string &nm,Architecture *g)
-  : Scope(nm,g,this)
+  : Scope(nm,g)
 {
   nextUniqueId = 0;
-  maptable.resize(g->numSpaces(),(EntryMap *)0);
-}
-
-ScopeInternal::ScopeInternal(const string &nm,Architecture *g, Scope *own)
-  : Scope(nm,g,own)
-{
-  nextUniqueId = 0;
-  maptable.resize(g->numSpaces(),(EntryMap *)0);
+  int4 numspaces = g->numSpaces();
+  for(int4 i=0;i<numspaces;++i)
+    maptable.push_back((EntryMap *)0);
 }
 
 ScopeInternal::~ScopeInternal(void)
@@ -2310,21 +2277,13 @@ void ScopeInternal::findByName(const string &name,vector<Symbol *> &res) const
   }
 }
 
-bool ScopeInternal::isNameUsed(const string &nm,const Scope *op2) const
+bool ScopeInternal::isNameUsed(const string &name) const
 
 {
-  Symbol sym((Scope *)0,nm,(Datatype *)0);
+  Symbol sym((Scope *)0,name,(Datatype *)0);
   SymbolNameTree::const_iterator iter = nametree.lower_bound(&sym);
-  if (iter != nametree.end()) {
-    if ((*iter)->getName() == nm)
-      return true;
-  }
-  Scope *par = getParent();
-  if (par == (Scope *)0 || par == op2)
-    return false;
-  if (par->getParent() == (Scope *)0)	// Never recurse into global scope
-    return false;
-  return par->isNameUsed(nm, op2);
+  if (iter == nametree.end()) return false;
+  return ((*iter)->getName() == name);
 }
 
 string ScopeInternal::buildVariableName(const Address &addr,
@@ -2605,23 +2564,6 @@ void ScopeInternal::processHole(const Element *el)
   }
 }
 
-/// \brief Parse a \<collision> tag indicating a named symbol with no storage or data-type info
-///
-/// Let the decompiler know that a name is occupied within the scope for isNameUsed queries, without
-/// specifying storage and data-type information about the symbol.  This is modeled currently by
-/// creating an unmapped symbol.
-/// \param el is the \<collision> element
-void ScopeInternal::processCollision(const Element *el)
-
-{
-  const string &nm(el->getAttributeValue("name"));
-  SymbolNameTree::const_iterator iter = findFirstByName(nm);
-  if (iter == nametree.end()) {
-    Datatype *ct = glb->types->getBase(1,TYPE_INT);
-    addSymbol(nm,ct);
-  }
-}
-
 /// \brief Insert a Symbol into the \b nametree
 ///
 /// Duplicate symbol names are allowed for by establishing a deduplication id for the Symbol.
@@ -2696,8 +2638,6 @@ void ScopeInternal::restoreXml(const Element *el)
       }
       else if (subel->getName() == "hole")
 	processHole(subel);
-      else if (subel->getName() == "collision")
-	processCollision(subel);
       else
 	throw LowlevelError("Unknown symbollist tag: "+subel->getName());
       ++iter2;
@@ -2952,22 +2892,6 @@ void Database::removeRange(Scope *scope,AddrSpace *spc,uintb first,uintb last)
   fillResolve(scope);
 }
 
-/// Look for an immediate child scope by name in a given parent.  If does not exist,
-/// create a new scope with the name and attach it to the parent.
-/// \param nm is the base name of the desired subscope
-/// \param parent is the given parent scope to search
-/// \return the subscope object either found or created
-Scope *Database::findCreateSubscope(const string &nm,Scope *parent)
-
-{
-  Scope *res = parent->resolveScope(nm);
-  if (res != (Scope *)0)
-    return res;
-  res = globalscope->buildSubScope(nm);
-  attachScope(res, parent);
-  return res;
-}
-
 /// An \e absolute \e path of Scope names must be provided, from the global
 /// Scope down to the desired Scope.  If the first path name is blank (""), it
 /// matches the global Scope.  If the first path name is not blank, the
@@ -3002,8 +2926,8 @@ Scope *Database::resolveScope(const vector<string> &subnames) const
 /// \param basename will hold the passed back base Symbol name
 /// \param start is the Scope to start drilling down from, or NULL for the global scope
 /// \return the Scope being referred to by the name
-Scope *Database::resolveScopeFromSymbolName(const string &fullname,const string &delim,string &basename,
-					    Scope *start) const
+Scope *Database::resolveScopeSymbolName(const string &fullname,const string &delim,string &basename,
+					Scope *start) const
 {
   if (start == (Scope *)0)
     start = globalscope;
@@ -3017,37 +2941,6 @@ Scope *Database::resolveScopeFromSymbolName(const string &fullname,const string 
     start = start->resolveScope(scopename);
     if (start == (Scope *)0)	// Was the scope name bad
       return start;
-    mark = endmark + delim.size();
-  }
-  basename = fullname.substr(mark,endmark);
-  return start;
-}
-
-/// \brief Find and/or create Scopes associated with a qualified Symbol name
-///
-/// The name is parsed using a \b delimiter that is passed in. The name can
-/// be only partially qualified by passing in a starting Scope, which the
-/// name is assumed to be relative to. Otherwise the name is assumed to be
-/// relative to the global Scope.  The unqualified (base) name of the Symbol
-/// is passed back to the caller.  Any missing scope in the path is created.
-/// \param fullname is the qualified Symbol name
-/// \param delim is the delimiter separating names
-/// \param basename will hold the passed back base Symbol name
-/// \param start is the Scope to start drilling down from, or NULL for the global scope
-/// \return the Scope being referred to by the name
-Scope *Database::findCreateScopeFromSymbolName(const string &fullname,const string &delim,string &basename,
-					       Scope *start)
-{
-  if (start == (Scope *)0)
-    start = globalscope;
-
-  string::size_type mark = 0;
-  string::size_type endmark;
-  for(;;) {
-    endmark = fullname.find(delim,mark);
-    if (endmark == string::npos) break;
-    string scopename = fullname.substr(mark,endmark-mark);
-    start = findCreateSubscope(scopename, start);
     mark = endmark + delim.size();
   }
   basename = fullname.substr(mark,endmark);
@@ -3202,13 +3095,28 @@ void Database::restoreXml(const Element *el)
 
   for(;iter!=list.end();++iter) {
     const Element *subel = *iter;
+    Scope *new_scope;
     string name;
     vector<string> parnames;
     parseParentTag(subel,name,parnames);
     parnames.push_back(name);
-    Scope *new_scope = globalscope;
-    for(int4 i=1;i<parnames.size();++i)
-      new_scope = findCreateSubscope(parnames[i], new_scope);
+    new_scope = resolveScope(parnames);
+    if (new_scope == (Scope *)0) {
+      // Scope wasn't pre-existing
+      Scope *curscope = globalscope;
+      int4 i;
+      for(i=1;i<parnames.size();++i) {
+	Scope *nextscope = curscope->resolveScope(parnames[i]); // Resolve through any pre-existing scopes
+	if (nextscope == (Scope *)0) break;
+	curscope = nextscope;
+      }
+      while(i != parnames.size()) {
+	new_scope = new ScopeInternal(parnames[i],glb); // Create any new scopes, up to and including
+	attachScope(new_scope,curscope); // the scope represented by this Element
+	curscope = new_scope;
+	i += 1;
+      }
+    }
     new_scope->restoreXml(subel);
   }
 }

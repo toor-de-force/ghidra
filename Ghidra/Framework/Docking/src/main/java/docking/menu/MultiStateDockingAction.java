@@ -22,8 +22,7 @@ import java.util.List;
 import javax.swing.Icon;
 import javax.swing.JButton;
 
-import docking.ActionContext;
-import docking.DockingWindowManager;
+import docking.*;
 import docking.action.*;
 import docking.widgets.EventTrigger;
 import ghidra.util.HelpLocation;
@@ -149,13 +148,10 @@ public abstract class MultiStateDockingAction<T> extends DockingAction {
 
 	private ActionContext getActionContext() {
 		DockingWindowManager manager = DockingWindowManager.getActiveInstance();
-
-		ActionContext context = manager.getActionContext(this);
-
-		if (context == null) {
-			context = new ActionContext();
-		}
-		return context;
+		ComponentProvider provider = manager.getActiveComponentProvider();
+		ActionContext localContext = provider == null ? null : provider.getActionContext(null);
+		ActionContext actionContext = localContext == null ? new ActionContext() : localContext;
+		return actionContext;
 	}
 
 	protected List<DockingActionIf> getStateActions() {
@@ -235,7 +231,7 @@ public abstract class MultiStateDockingAction<T> extends DockingAction {
 		ToolBarData tbd = getToolBarData();
 		tbd.setIcon(getIcon(actionState));
 
-		setDescription(getToolTipText());
+		setDescription(getTooTipText());
 		actionStateChanged(actionState, trigger);
 	}
 
@@ -288,7 +284,7 @@ public abstract class MultiStateDockingAction<T> extends DockingAction {
 		throw new UnsupportedOperationException();
 	}
 
-	public String getToolTipText() {
+	public String getTooTipText() {
 		return getName() + ": " + getCurrentState().getName();
 	}
 

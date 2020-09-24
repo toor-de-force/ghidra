@@ -374,15 +374,8 @@ class ProjectActionManager {
 		plugin.rebuildRecentMenus();
 		buildCloseViewsActions();
 
+		boolean hasActiveProject = activeProject != null;
 		enableActions(activeProject != null);
-
-		if (activeProject != null) {
-			// update repository related actions since we may initially be connected
-			RepositoryAdapter repository = activeProject.getRepository();
-			if (repository != null) {
-				connectionStateChanged(repository);
-			}
-		}
 	}
 
 	/**

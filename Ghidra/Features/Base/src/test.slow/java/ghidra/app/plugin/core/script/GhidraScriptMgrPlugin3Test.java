@@ -19,7 +19,9 @@ import static org.junit.Assert.*;
 
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import javax.swing.*;
 
@@ -29,7 +31,9 @@ import docking.KeyEntryTextField;
 import docking.action.DockingActionIf;
 import docking.widgets.filter.FilterTextField;
 import docking.widgets.list.ListPanel;
+import docking.widgets.pathmanager.PathManager;
 import generic.jar.ResourceFile;
+import generic.util.Path;
 import ghidra.app.script.GhidraScriptUtil;
 import ghidra.app.script.JavaScriptProvider;
 import ghidra.util.StringUtilities;
@@ -148,11 +152,11 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 	public void testRefreshFindsNewScript() throws Exception {
 		int rowCount = getRowCount();
 
-		JavaScriptProvider javaScriptProvider = new JavaScriptProvider();
+		JavaScriptProvider jsp = new JavaScriptProvider();
 
-		ResourceFile newScript = GhidraScriptUtil.createNewScript(javaScriptProvider,
+		ResourceFile newScript = GhidraScriptUtil.createNewScript(jsp,
 			new ResourceFile(GhidraScriptUtil.USER_SCRIPTS_DIR), provider.getScriptDirectories());
-		javaScriptProvider.createNewScript(newScript, null);
+		jsp.createNewScript(newScript, null);
 
 		refreshScriptManager();
 
@@ -160,7 +164,7 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 
 		assertEquals(rowCount + 1, getRowCount());
 
-		deleteFile(newScript);
+		newScript.delete();
 	}
 
 	@Test
@@ -183,7 +187,7 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 		assertCategoryInTree(newCategory);
 		assertCategoryNotInTree(oldCategory);
 
-		deleteFile(newScript);
+		newScript.delete();
 	}
 
 	@Test
@@ -207,7 +211,7 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 		assertCategoryInTree(newCategory);
 		assertCategoryNotInTree(oldCategory);
 
-		deleteFile(newScript);
+		newScript.delete();
 	}
 
 	@Test
@@ -276,23 +280,34 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 		// Tests that the user can add an additional script path directory and choose that one
 		// to use
 		//
-		DockingActionIf bundleStatusAction = getAction(plugin, "Script Directories");
-		performAction(bundleStatusAction, false);
+		DockingActionIf pathAction = getAction(plugin, "Script Directories");
+		performAction(pathAction, false);
 		waitForSwing();
 
-		final ResourceFile dir = new ResourceFile(getTestDirectoryPath() + "/test_scripts");
-		dir.getFile(false).mkdirs();
+		PickPathsDialog pathsDialog = waitForDialogComponent(PickPathsDialog.class);
 
-		provider.getBundleHost().enable(dir);
+		final File dir = new File(getTestDirectoryPath() + "/test_scripts");
+		dir.mkdirs();
+
+		final PathManager pathManager = pathsDialog.getPathManager();
+		SwingUtilities.invokeLater(() -> {
+			List<Path> paths = pathManager.getPaths();
+			paths.add(0, new Path(dir));
+			pathManager.setPaths(paths);
+		});
 		waitForSwing();
+
+		pressButtonByText(pathsDialog, "Dismiss");
+		waitForSwing();
+		assertTrue(!pathsDialog.isShowing());
 
 		pressNewButton();
 
 		chooseJavaProvider();
 
-		SaveDialog saveDialog = waitForDialogComponent(SaveDialog.class);
+		SaveDialog sd = waitForDialogComponent(SaveDialog.class);
 
-		final ListPanel listPanel = (ListPanel) findComponentByName(saveDialog.getComponent(), "PATH_LIST");
+		final ListPanel listPanel = (ListPanel) findComponentByName(sd.getComponent(), "PATH_LIST");
 		assertNotNull(listPanel);
 		assertTrue(listPanel.isVisible());
 		assertEquals(2, listPanel.getListModel().getSize());
@@ -315,19 +330,18 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 		}, false);
 		waitForSwing();
 
-		pressButtonByText(saveDialog, "OK");
-		assertTrue(!saveDialog.isShowing());
+		pressButtonByText(sd, "OK");
+		assertTrue(!sd.isShowing());
 		waitForTasks();
 
-		ResourceFile newScript = saveDialog.getFile();
+		ResourceFile newScript = sd.getFile();
 		assertTrue(newScript.exists());
 
 		assertNotNull(newScript);
-		assertEquals(dir.getAbsolutePath(),
-			newScript.getParentFile().getFile(false).getAbsolutePath());
+		assertEquals(dir, newScript.getParentFile().getFile(false));
 
-		deleteFile(newScript);
-		deleteFile(dir);
+		newScript.delete();
+		dir.delete();
 		waitForSwing();
 	}
 
@@ -388,7 +402,6 @@ public class GhidraScriptMgrPlugin3Test extends AbstractGhidraScriptMgrPluginTes
 		chooseDiscaredEditorChanges();
 
 		assertFalse("Editor not closed after discarding changes", editor.isVisible());
-
 	}
 
 	@Test

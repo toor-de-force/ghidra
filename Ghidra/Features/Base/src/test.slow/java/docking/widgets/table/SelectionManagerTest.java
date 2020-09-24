@@ -450,7 +450,7 @@ public class SelectionManagerTest extends AbstractGhidraHeadedIntegrationTest {
 
 	private void waitForTableModel() {
 		if (table.getModel() instanceof ThreadedTestTableModel) {
-			waitForTableModel(threadedModel);
+			waitForThreadedModel();
 		}
 		else {
 			waitForSwing();
@@ -466,7 +466,20 @@ public class SelectionManagerTest extends AbstractGhidraHeadedIntegrationTest {
 		SwingUtilities.invokeAndWait(
 			() -> threadedModel.setTableFilter(factory.getTableFilter(text, transformer)));
 
-		waitForTableModel();
+		waitForThreadedModel();
+	}
+
+	private void waitForThreadedModel() {
+		int numWaits = 0;
+		int sleepyTime = 10;
+		int maxWaits = ((MAX_ROW_COUNT + 1) * MAX_THREAD_SLEEP_DELAY) / sleepyTime;
+
+		while (threadedModel.isBusy() && numWaits < maxWaits) {
+			numWaits++;
+			sleep(sleepyTime);
+		}
+		assertTrue("Threaded table model never finished work!", numWaits < maxWaits);
+		waitForSwing();
 	}
 
 	private int getOtherNonDuplicateRowIndex(int dup1Index,

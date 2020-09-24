@@ -482,7 +482,7 @@ int4 ParamListStandard::characterizeAsParam(const Address &loc,int4 size) const
     const ParamEntry *testEntry = (*iterpair.first).getParamEntry();
     if (testEntry->getMinSize() <= size && testEntry->justifiedContain(loc, size)==0)
       return 1;
-    if (testEntry->isExclusion() && testEntry->containedBy(loc, size))
+    if (testEntry->containedBy(loc, size))
       res = 2;
     ++iterpair.first;
   }
@@ -490,7 +490,7 @@ int4 ParamListStandard::characterizeAsParam(const Address &loc,int4 size) const
     iterpair.second = resolver->find_end(loc.getOffset() + (size-1));
     while(iterpair.first != iterpair.second) {
       const ParamEntry *testEntry = (*iterpair.first).getParamEntry();
-      if (testEntry->isExclusion() && testEntry->containedBy(loc, size)) {
+      if (testEntry->containedBy(loc, size)) {
 	res = 2;
 	break;
       }
@@ -540,7 +540,7 @@ void ParamListStandard::assignMap(const vector<Datatype *> &proto,bool isinput,T
   if (isinput) {
     if (res.size()==2) { // Check for hidden parameters defined by the output list
       res.back().addr = assignAddress(res.back().type,status); // Reserve first param for hidden ret value
-      res.back().flags |= ParameterPieces::hiddenretparm;
+      res.back().flags |= Varnode::hiddenretparm;
       if (res.back().addr.isInvalid())
 	throw ParamUnassignedError("Cannot assign parameter address for " + res.back().type->getName());
     }
@@ -553,10 +553,10 @@ void ParamListStandard::assignMap(const vector<Datatype *> &proto,bool isinput,T
 	  spc = typefactory.getArch()->getDefaultDataSpace();
 	int4 pointersize = spc->getAddrSize();
 	int4 wordsize = spc->getWordSize();
-	Datatype *pointertp = typefactory.getTypePointer(pointersize,proto[i],wordsize);
+	Datatype *pointertp = typefactory.getTypePointerAbsolute(pointersize,proto[i],wordsize);
 	res.back().addr = assignAddress(pointertp,status);
 	res.back().type = pointertp;
-	res.back().flags = ParameterPieces::indirectstorage;
+	res.back().flags = Varnode::indirectstorage;
       }
       else
 	res.back().addr = assignAddress(proto[i],status);
@@ -953,12 +953,9 @@ bool ParamListStandard::getBiggestContainedParam(const Address &loc,int4 size,Va
   ParamEntryResolver *resolver = resolverMap[index];
   if (resolver == (ParamEntryResolver *)0)
     return false;
-  Address endLoc = loc + (size-1);
-  if (endLoc.getOffset() < loc.getOffset())
-    return false;	// Assume there is no parameter if we see wrapping
   const ParamEntry *maxEntry = (const ParamEntry *)0;
   ParamEntryResolver::const_iterator iter = resolver->find_begin(loc.getOffset());
-  ParamEntryResolver::const_iterator enditer = resolver->find_end(endLoc.getOffset());
+  ParamEntryResolver::const_iterator enditer = resolver->find_end(loc.getOffset() + (size-1));
   while(iter != enditer) {
     const ParamEntry *testEntry = (*iter).getParamEntry();
     ++iter;
@@ -969,9 +966,9 @@ bool ParamListStandard::getBiggestContainedParam(const Address &loc,int4 size,Va
 	maxEntry = testEntry;
     }
   }
+  if (!maxEntry->isExclusion())
+    return false;
   if (maxEntry != (const ParamEntry *)0) {
-    if (!maxEntry->isExclusion())
-      return false;
     res.space = maxEntry->getSpace();
     res.offset = maxEntry->getBase();
     res.size = maxEntry->getSize();
@@ -1102,17 +1099,17 @@ void ParamListStandardOut::assignMap(const vector<Datatype *> &proto,bool isinpu
       spc = typefactory.getArch()->getDefaultDataSpace();
     int4 pointersize = spc->getAddrSize();
     int4 wordsize = spc->getWordSize();
-    Datatype *pointertp = typefactory.getTypePointer(pointersize, proto[0], wordsize);
+    Datatype *pointertp = typefactory.getTypePointerAbsolute(pointersize, proto[0], wordsize);
     res.back().addr = assignAddress(pointertp,status);
     if (res.back().addr.isInvalid())
       throw ParamUnassignedError("Cannot assign return value as a pointer");
     res.back().type = pointertp;
-    res.back().flags = ParameterPieces::indirectstorage;
+    res.back().flags = Varnode::indirectstorage;
 
     res.push_back(ParameterPieces()); // Add extra storage location in the input params
     res.back().type = pointertp;      // that holds a pointer to where the return value should be stored
     // leave its address invalid, to be filled in by the input list assignMap
-    res.back().flags = ParameterPieces::hiddenretparm; // Mark it as special
+    res.back().flags = Varnode::hiddenretparm; // Mark it as special 
   }
 }
 
@@ -1759,7 +1756,6 @@ ProtoModel::ProtoModel(Architecture *g)
   glb = g;
   input = (ParamList *)0;
   output = (ParamList *)0;
-  compatModel = (const ProtoModel *)0;
   extrapop=0;
   injectUponEntry = -1;
   injectUponReturn = -1;
@@ -1798,9 +1794,6 @@ ProtoModel::ProtoModel(const string &nm,const ProtoModel &op2)
   stackgrowsnegative = op2.stackgrowsnegative;
   hasThis = op2.hasThis;
   isConstruct = op2.isConstruct;
-  if (name == "__thiscall")
-    hasThis = true;
-  compatModel = &op2;
 }
 
 ProtoModel::~ProtoModel(void)
@@ -1810,19 +1803,6 @@ ProtoModel::~ProtoModel(void)
     delete input;
   if (output != (ParamList *)0)
     delete output;
-}
-
-/// Test whether one ProtoModel can substituted for another during FuncCallSpecs::deindirect
-/// Currently this can only happen if one model is a copy of the other except for the
-/// hasThis boolean property.
-/// \param op2 is the other ProtoModel to compare with \b this
-/// \return \b true if the two models are compatible
-bool ProtoModel::isCompatible(const ProtoModel *op2) const
-
-{
-  if (this == op2 || compatModel == op2 || op2->compatModel == this)
-    return true;
-  return false;
 }
 
 /// \brief Calculate input and output storage locations given a function prototype
@@ -2283,30 +2263,21 @@ void ParameterBasic::setTypeLock(bool val)
 
 {
   if (val) {
-    flags |= ParameterPieces::typelock;
+    flags |= Varnode::typelock;
     if (type->getMetatype() == TYPE_UNKNOWN) // Check if we are locking TYPE_UNKNOWN
-      flags |= ParameterPieces::sizelock;
+      flags |= Varnode::mark;	// If so, set Varnode::mark to indicate the sizelock
   }
   else
-    flags &= ~((uint4)(ParameterPieces::typelock|ParameterPieces::sizelock));
+    flags &= ~((uint4)(Varnode::typelock|Varnode::mark));
 }
 
 void ParameterBasic::setNameLock(bool val)
 
 {
   if (val)
-    flags |= ParameterPieces::namelock;
+    flags |= Varnode::namelock;
   else
-    flags &= ~((uint4)ParameterPieces::namelock);
-}
-
-void ParameterBasic::setThisPointer(bool val)
-
-{
-  if (val)
-    flags |= ParameterPieces::isthis;
-  else
-    flags &= ~((uint4)ParameterPieces::isthis);
+    flags &= ~((uint4)Varnode::namelock);
 }
 
 void ParameterBasic::overrideSizeLockType(Datatype *ct)
@@ -2378,12 +2349,6 @@ bool ParameterSymbol::isSizeTypeLocked(void) const
   return sym->isSizeTypeLocked();
 }
 
-bool ParameterSymbol::isThisPointer(void) const
-
-{
-  return sym->isThisPointer();
-}
-
 bool ParameterSymbol::isIndirectStorage(void) const
 
 {
@@ -2423,13 +2388,6 @@ void ParameterSymbol::setNameLock(bool val)
     scope->setAttribute(sym,Varnode::namelock);
   else
     scope->clearAttribute(sym,Varnode::namelock);
-}
-
-void ParameterSymbol::setThisPointer(bool val)
-
-{
-  Scope *scope = sym->getScope();
-  scope->setThisPointer(sym, val);
 }
 
 void ParameterSymbol::overrideSizeLockType(Datatype *ct)
@@ -2510,8 +2468,6 @@ ProtoParameter *ProtoStoreSymbol::setInput(int4 i, const string &nm,const Parame
   SymbolEntry *entry;
   Address usepoint;
 
-  bool isindirect = (pieces.flags & ParameterPieces::indirectstorage) != 0;
-  bool ishidden = (pieces.flags & ParameterPieces::hiddenretparm) != 0;
   if (res->sym != (Symbol *)0) {
     entry = res->sym->getFirstWholeMap();
     if ((entry->getAddr() != pieces.addr)||(entry->getSize() != pieces.type->getSize())) {
@@ -2520,28 +2476,22 @@ ProtoParameter *ProtoStoreSymbol::setInput(int4 i, const string &nm,const Parame
     }
   }
   if (res->sym == (Symbol *)0) {
-    if (scope->discoverScope(pieces.addr,pieces.type->getSize(),usepoint) == (Scope *)0)
+    if (scope->discoverScope(pieces.addr,pieces.type->getSize(),usepoint) != scope)
       usepoint = restricted_usepoint; 
     res->sym = scope->addSymbol(nm,pieces.type,pieces.addr,usepoint)->getSymbol();
     scope->setCategory(res->sym,0,i);
-    if (isindirect || ishidden) {
-      uint4 mirror = 0;
-      if (isindirect)
-	mirror |= Varnode::indirectstorage;
-      if (ishidden)
-	mirror |= Varnode::hiddenretparm;
-      scope->setAttribute(res->sym,mirror);
-    }
+    if ((pieces.flags & (Varnode::indirectstorage|Varnode::hiddenretparm)) != 0)
+      scope->setAttribute(res->sym,pieces.flags & (Varnode::indirectstorage|Varnode::hiddenretparm));
     return res;
   }
-  if (res->sym->isIndirectStorage() != isindirect) {
-    if (isindirect)
+  if ((res->sym->getFlags() & Varnode::indirectstorage) != (pieces.flags & Varnode::indirectstorage)) {
+    if ((pieces.flags & Varnode::indirectstorage)!=0)
       scope->setAttribute(res->sym,Varnode::indirectstorage);
     else
       scope->clearAttribute(res->sym,Varnode::indirectstorage);
   }
-  if (res->sym->isHiddenReturn() != ishidden) {
-    if (ishidden)
+  if ((res->sym->getFlags() & Varnode::hiddenretparm) != (pieces.flags & Varnode::hiddenretparm)) {
+    if ((pieces.flags & Varnode::hiddenretparm)!=0)
       scope->setAttribute(res->sym,Varnode::hiddenretparm);
     else
       scope->clearAttribute(res->sym,Varnode::hiddenretparm);
@@ -2784,8 +2734,6 @@ void ProtoStoreInternal::saveXml(ostream &s) const
       a_v_b(s,"typelock",true);
     if (param->isNameLocked())
       a_v_b(s,"namelock",true);
-    if (param->isThisPointer())
-      a_v_b(s,"thisptr",true);
     if (param->isIndirectStorage())
       a_v_b(s,"indirectstorage",true);
     if (param->isHiddenReturn())
@@ -2808,50 +2756,47 @@ void ProtoStoreInternal::restoreXml(const Element *el,ProtoModel *model)
   List::const_iterator iter;
   vector<ParameterPieces> pieces;
   vector<string> namelist;
+  vector<bool> typelocklist;
+  vector<bool> namelocklist;
   bool addressesdetermined = true;
 
   pieces.push_back( ParameterPieces() ); // Push on placeholder for output pieces
   namelist.push_back("ret");
+  typelocklist.push_back(outparam->isTypeLocked());
+  namelocklist.push_back(false);
   pieces.back().type = outparam->getType();
   pieces.back().flags = 0;
-  if (outparam->isTypeLocked())
-    pieces.back().flags |= ParameterPieces::typelock;
   if (outparam->isIndirectStorage())
-    pieces.back().flags |= ParameterPieces::indirectstorage;
+    pieces.back().flags |= Varnode::indirectstorage;
   if (outparam->getAddress().isInvalid())
     addressesdetermined = false;
 
   for(iter=list.begin();iter!=list.end();++iter) { // This is only the input params
     const Element *subel = *iter;
     string name;
+    bool typelock = false;
+    bool namelock = false;
     uint4 flags = 0;
     for(int4 i=0;i<subel->getNumAttributes();++i) {
       const string &attr( subel->getAttributeName(i) );
       if (attr == "name")
 	name = subel->getAttributeValue(i);
-      else if (attr == "typelock") {
-	if (xml_readbool(subel->getAttributeValue(i)))
-	  flags |= ParameterPieces::typelock;
-      }
-      else if (attr == "namelock") {
-	if (xml_readbool(subel->getAttributeValue(i)))
-	  flags |= ParameterPieces::namelock;
-      }
-      else if (attr == "thisptr") {
-	if (xml_readbool(subel->getAttributeValue(i)))
-	  flags |= ParameterPieces::isthis;
-      }
+      else if (attr == "typelock")
+	typelock = xml_readbool(subel->getAttributeValue(i));
+      else if (attr == "namelock")
+	namelock = xml_readbool(subel->getAttributeValue(i));
       else if (attr == "indirectstorage") {
 	if (xml_readbool(subel->getAttributeValue(i)))
-	  flags |= ParameterPieces::indirectstorage;
+	  flags |= Varnode::indirectstorage;
       }
       else if (attr == "hiddenretparm") {
 	if (xml_readbool(subel->getAttributeValue(i)))
-	  flags |= ParameterPieces::hiddenretparm;
+	  flags |= Varnode::hiddenretparm;
       }
     }
-    if ((flags & ParameterPieces::hiddenretparm) == 0)
-      namelist.push_back(name);
+    namelist.push_back(name);
+    typelocklist.push_back(typelock);
+    namelocklist.push_back(namelock);
     pieces.push_back(ParameterPieces());
     ParameterPieces &curparam( pieces.back() );
     const List &sublist(subel->getChildren());
@@ -2863,6 +2808,8 @@ void ProtoStoreInternal::restoreXml(const Element *el,ProtoModel *model)
     curparam.flags = flags;
     if (curparam.addr.isInvalid())
       addressesdetermined = false;
+    typelocklist.push_back(typelock);
+    namelocklist.push_back(namelock);
   }
   ProtoParameter *curparam;
   if (!addressesdetermined) {
@@ -2871,51 +2818,26 @@ void ProtoStoreInternal::restoreXml(const Element *el,ProtoModel *model)
     vector<Datatype *> typelist;
     for(int4 i=0;i<pieces.size();++i) // Save off the restored types
       typelist.push_back( pieces[i].type );
-    vector<ParameterPieces> addrPieces;
-    model->assignParameterStorage(typelist,addrPieces,true);
-    addrPieces.swap(pieces);
-    uint4 k = 0;
-    for(uint4 i=0;i<pieces.size();++i) {
-      if ((pieces[i].flags & ParameterPieces::hiddenretparm)!=0)
-	continue;	// Increment i but not k
-      pieces[i].flags = addrPieces[k].flags;		// Use the original flags
-      k = k + 1;
-    }
+    pieces.clear();		// throw out any other piece information
+    model->assignParameterStorage(typelist,pieces,true);
     if (pieces[0].addr.isInvalid()) {	// If could not get valid storage for output
-      pieces[0].flags &= ~((uint4)ParameterPieces::typelock);		// Treat as unlocked void
+      typelocklist[0] = false;		// Treat as unlocked void
     }
     curparam = setOutput(pieces[0]);
-    curparam->setTypeLock((pieces[0].flags & ParameterPieces::typelock)!=0);
+    curparam->setTypeLock(typelocklist[0]);
   }
   uint4 j=1;
   for(uint4 i=1;i<pieces.size();++i) {
-    if ((pieces[i].flags&ParameterPieces::hiddenretparm)!=0) {
+    if ((pieces[i].flags&Varnode::hiddenretparm)!=0) {
        curparam = setInput(i-1,"rethidden",pieces[i]);
-       curparam->setTypeLock((pieces[0].flags & ParameterPieces::typelock)!=0);   // Has output's typelock
+       curparam->setTypeLock(typelocklist[0]);   // Has output's typelock
        continue;    // increment i but not j
     }
     curparam = setInput(i-1,namelist[j],pieces[i]);
-    curparam->setTypeLock((pieces[i].flags & ParameterPieces::typelock)!=0);
-    curparam->setNameLock((pieces[i].flags & ParameterPieces::namelock)!=0);
+    curparam->setTypeLock(typelocklist[j]);
+    curparam->setNameLock(namelocklist[j]);
     j = j + 1;
   }
-}
-
-/// This is called after a new prototype is established (via restoreXml or updateAllTypes)
-/// It makes sure that if the ProtoModel calls for a "this" parameter, then the appropriate parameter
-/// is explicitly marked as the "this".
-void FuncProto::updateThisPointer(void)
-
-{
-  if (!model->hasThisPointer()) return;
-  int4 numInputs = store->getNumInputs();
-  if (numInputs == 0) return;
-  ProtoParameter *param = store->getInput(0);
-  if (param->isHiddenReturn()) {
-    if (numInputs < 2) return;
-    param = store->getInput(1);
-  }
-  param->setThisPointer(true);
 }
 
 /// Prepend the indicated number of input parameters to \b this.
@@ -2968,7 +2890,7 @@ void FuncProto::paramShift(int4 paramshift)
   store->setOutput(pieces[0]);
   uint4 j=1;
   for(uint4 i=1;i<pieces.size();++i) {
-    if ((pieces[i].flags & ParameterPieces::hiddenretparm) != 0) {
+    if ((pieces[i].flags & Varnode::hiddenretparm) != 0) {
        store->setInput(i-1,"rethidden",pieces[i]);
        continue;   // increment i but not j
     }
@@ -3257,10 +3179,9 @@ void FuncProto::cancelInjectId(void)
 /// given a list of Varnodes and their associated trial information,
 /// create an input parameter for each trial in order, grabbing data-type
 /// information from the Varnode.  Any old input parameters are cleared.
-/// \param data is the function containing the trial Varnodes
 /// \param triallist is the list of Varnodes
 /// \param activeinput is the trial container
-void FuncProto::updateInputTypes(Funcdata &data,const vector<Varnode *> &triallist,ParamActive *activeinput)
+void FuncProto::updateInputTypes(const vector<Varnode *> &triallist,ParamActive *activeinput)
 
 {
   if (isInputLocked()) return;	// Input is locked, do no updating
@@ -3271,30 +3192,19 @@ void FuncProto::updateInputTypes(Funcdata &data,const vector<Varnode *> &trialli
     ParamTrial &trial(activeinput->getTrial(i));
     if (trial.isUsed()) {
       Varnode *vn = triallist[trial.getSlot()-1];
-      if (vn->isMark()) continue;
-      ParameterPieces pieces;
-      if (vn->isPersist()) {
-	int4 sz;
-	pieces.addr = data.findDisjointCover(vn, sz);
-	if (sz == vn->getSize())
-	  pieces.type = vn->getHigh()->getType();
-	else
-	  pieces.type = data.getArch()->types->getBase(sz, TYPE_UNKNOWN);
-	pieces.flags = 0;
-      }
-      else {
+      if (!vn->isMark()) {
+	ParameterPieces pieces;
 	pieces.addr = trial.getAddress();
 	pieces.type = vn->getHigh()->getType();
 	pieces.flags = 0;
+	store->setInput(count,"",pieces);
+	count += 1;
+	vn->setMark();		// Make sure vn is used only once
       }
-      store->setInput(count,"",pieces);
-      count += 1;
-      vn->setMark();
     }
   }
   for(int4 i=0;i<triallist.size();++i)
     triallist[i]->clearMark();
-  updateThisPointer();
 }
 
 /// \brief Update input parameters based on Varnode trials, but do not store the data-type
@@ -3302,36 +3212,29 @@ void FuncProto::updateInputTypes(Funcdata &data,const vector<Varnode *> &trialli
 /// This is accomplished in the same way as if there were data-types but instead of
 /// pulling a data-type from the Varnode, only the size is used.
 /// Undefined data-types are pulled from the given TypeFactory
-/// \param data is the function containing the trial Varnodes
 /// \param triallist is the list of Varnodes
 /// \param activeinput is the trial container
-void FuncProto::updateInputNoTypes(Funcdata &data,const vector<Varnode *> &triallist,ParamActive *activeinput)
+/// \param factory is the given TypeFactory
+void FuncProto::updateInputNoTypes(const vector<Varnode *> &triallist,ParamActive *activeinput,
+				   TypeFactory *factory)
 {
   if (isInputLocked()) return;	// Input is locked, do no updating
   store->clearAllInputs();
   int4 count = 0;
   int4 numtrials = activeinput->getNumTrials();
-  TypeFactory *factory = data.getArch()->types;
   for(int4 i=0;i<numtrials;++i) {
     ParamTrial &trial(activeinput->getTrial(i));
     if (trial.isUsed()) {
       Varnode *vn = triallist[trial.getSlot()-1];
-      if (vn->isMark()) continue;
-      ParameterPieces pieces;
-      if (vn->isPersist()) {
-	int4 sz;
-	pieces.addr = data.findDisjointCover(vn, sz);
-	pieces.type = factory->getBase(sz, TYPE_UNKNOWN);
-	pieces.flags = 0;
-      }
-      else {
-	pieces.addr = trial.getAddress();
+      if (!vn->isMark()) {
+	ParameterPieces pieces;
 	pieces.type = factory->getBase(vn->getSize(),TYPE_UNKNOWN);
+	pieces.addr = trial.getAddress();
 	pieces.flags = 0;
+	store->setInput(count,"",pieces);
+	count += 1;
+	vn->setMark();		// Make sure vn is used only once
       }
-      store->setInput(count,"",pieces);
-      count += 1;
-      vn->setMark();		// Make sure vn is used only once
     }
   }
   for(int4 i=0;i<triallist.size();++i)
@@ -3422,7 +3325,7 @@ void FuncProto::updateAllTypes(const vector<string> &namelist,const vector<Datat
     store->setOutput(pieces[0]);
     uint4 j=1;
     for(uint4 i=1;i<pieces.size();++i) {
-      if ((pieces[i].flags & ParameterPieces::hiddenretparm) != 0) {
+      if ((pieces[i].flags & Varnode::hiddenretparm) != 0) {
          store->setInput(i-1,"rethidden",pieces[i]);
          continue;       // increment i but not j
       }
@@ -3433,7 +3336,6 @@ void FuncProto::updateAllTypes(const vector<string> &namelist,const vector<Datat
   catch(ParamUnassignedError &err) {
     flags |= error_inputparam;
   }
-  updateThisPointer();
 }
 
 /// \brief Calculate the effect \b this has an a given storage location
@@ -3668,7 +3570,7 @@ bool FuncProto::getBiggestContainedInputParam(const Address &loc,int4 size,Varno
 bool FuncProto::isCompatible(const FuncProto &op2) const
 
 {
-  if (!model->isCompatible(op2.model)) return false;
+  if (model != op2.model) return false;
   if (op2.isOutputLocked()) {
     if (isOutputLocked()) {
       ProtoParameter *out1 = store->getOutput();
@@ -3760,6 +3662,8 @@ void FuncProto::saveXml(ostream &s) const
     a_v_b(s,"constructor",true);
   if (isDestructor())
     a_v_b(s,"destructor",true);
+  if (hasThisPointer())
+    a_v_b(s,"hasthis",true);
   s << ">\n";
   ProtoParameter *outparam = store->getOutput();
   s << "  <returnsym";
@@ -3903,6 +3807,10 @@ void FuncProto::restoreXml(const Element *el,Architecture *glb)
       if (xml_readbool(el->getAttributeValue(i)))
 	flags |= is_destructor;
     }
+    else if (attrname == "hasthis") {
+      if (xml_readbool(el->getAttributeValue(i)))
+	flags |= has_thisptr;
+    }
   }
   if (mod != (ProtoModel *)0) // If a model was specified
     setModel(mod);		// This sets extrapop to model default
@@ -4016,7 +3924,7 @@ void FuncProto::restoreXml(const Element *el,Architecture *glb)
   if ((outparam->getType()->getMetatype()!=TYPE_VOID)&&outparam->getAddress().isInvalid()) {
     throw LowlevelError("<returnsym> tag must include a valid storage address");
   }
-  updateThisPointer();
+
 }
 
 /// \brief Calculate the stack offset of \b this call site
@@ -4177,7 +4085,7 @@ Varnode *FuncCallSpecs::buildParam(Funcdata &data,Varnode *vn,ProtoParameter *pa
   Varnode *newout = data.newUniqueOut(param->getSize(),newop);
   // Its possible vn is free, in which case the SetInput would give it multiple descendants
   // See we construct a new version
-  if (vn->isFree() && !vn->isConstant() && !vn->hasNoDescend())
+  if (vn->isFree() && (!vn->hasNoDescend()))
     vn = data.newVarnode(vn->getSize(),vn->getAddr());
   data.opSetInput(newop,vn,0);
   data.opSetInput(newop,data.newConstant(4,0),1);

@@ -20,6 +20,7 @@ import java.util.List;
 
 import javax.swing.event.ChangeListener;
 
+import ghidra.app.plugin.core.datamgr.archive.SourceArchive;
 import ghidra.framework.ShutdownHookRegistry;
 import ghidra.framework.ShutdownPriority;
 import ghidra.util.*;

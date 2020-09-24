@@ -78,7 +78,9 @@ public class QueryOpinionService {
 			QueryOpinionServiceHandler.read(parser);
 		}
 		finally {
-			parser.dispose();
+			if (parser != null) {
+				parser.dispose();
+			}
 		}
 	}
 

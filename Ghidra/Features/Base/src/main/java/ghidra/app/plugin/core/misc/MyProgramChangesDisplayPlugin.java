@@ -255,7 +255,7 @@ public class MyProgramChangesDisplayPlugin extends ProgramPlugin implements Doma
 	 */
 	private void updateChangeMarkers() {
 
-		Swing.assertSwingThread(
+		Swing.assertThisIsTheSwingThread(
 			"Change markers must be manipulated on the Swing thread");
 
 		if (currentProgram == null) {

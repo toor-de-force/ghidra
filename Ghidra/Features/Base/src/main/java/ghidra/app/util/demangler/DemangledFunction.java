@@ -22,7 +22,6 @@ import org.apache.commons.lang3.StringUtils;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.*;
 import ghidra.app.util.NamespaceUtils;
-import ghidra.program.database.data.DataTypeUtilities;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.*;
@@ -208,6 +207,7 @@ public class DemangledFunction extends DemangledObject {
 			if (!isTypeCast()) {
 				buffer.append(returnType == null ? "" : returnType.getSignature() + " ");
 			}
+//			buffer.append(returnType == null ? "" : returnType.toSignature() + " ");
 		}
 
 		buffer.append(callingConvention == null ? "" : callingConvention + " ");
@@ -359,8 +359,8 @@ public class DemangledFunction extends DemangledObject {
 		//if existing function signature is user defined - add demangled label only
 		boolean makePrimary = (function.getSignatureSource() != SourceType.USER_DEFINED);
 
-		Symbol demangledSymbol =
-			applyDemangledName(function.getEntryPoint(), makePrimary, false, program);
+		Symbol demangledSymbol = applyDemangledName(function.getEntryPoint(), makePrimary,
+			false, program);
 		if (demangledSymbol == null) {
 			return false;
 		}
@@ -379,7 +379,7 @@ public class DemangledFunction extends DemangledObject {
 			signature.setVarArgs(true);
 		}
 		if (!function.isExternal() && isParameterMismatch(function, signature)) {
-			bookmarkParameterMismatch(program, function.getEntryPoint());
+			bookmarkParameterMismatch(program, function.getEntryPoint(), args);
 			return true;
 		}
 
@@ -412,15 +412,26 @@ public class DemangledFunction extends DemangledObject {
 		return false;
 	}
 
-	private void bookmarkParameterMismatch(Program program, Address address) {
+	private void bookmarkParameterMismatch(Program program, Address address,
+			List<ParameterDefinitionImpl> args) {
 
 		if (parameters.isEmpty()) {
 			return;
 		}
 
+		int pointerSize = program.getDefaultPointerSize();
 		BookmarkManager bookmarkManager = program.getBookmarkManager();
+		for (int i = 0; i < args.size(); i++) {
+			if (args.get(i).getLength() > pointerSize) {
+				bookmarkManager.setBookmark(address, BookmarkType.ANALYSIS, "Demangler",
+					"Couldn't apply demangled signature - probably due to datatype that is too " +
+						"large to fit in a parameter");
+			}
+		}
+
 		bookmarkManager.setBookmark(address, BookmarkType.ANALYSIS, "Demangler",
-			"Couldn't apply demangled signature - mismatch with existing signature");
+			"Couldn't apply demangled signature - bad parameter number match (" + args.size() +
+				") in a function in a namespace");
 	}
 
 	static void maybeCreateUndefined(Program program, Address address) {
@@ -532,13 +543,13 @@ public class DemangledFunction extends DemangledObject {
 	}
 
 	private boolean isParameterMismatch(Function func, FunctionSignature signature) {
+		int existingParameterCount = func.getParameterCount();
 
-		// Default source types can be overridden
-		if (func.getSignatureSource() == SourceType.DEFAULT) {
+		// If this function is not in a namespace, we don't care if the parameters mismatch,
+		// just apply them.
+		if (namespace == null || namespace.getName().startsWith("__")) {
 			return false;
 		}
-
-		int existingParameterCount = func.getParameterCount();
 
 		// If we don't know the parameters, and have already decided on This calling
 		// convention. is not a problem.
@@ -547,14 +558,8 @@ public class DemangledFunction extends DemangledObject {
 			return false;
 		}
 
-		// are the data types already on the signature better than analysis provided ones
-		if (isDefinedFunctionDataTypes(func)) {
-			return true;
-		}
-
-		// If this function is not in a namespace, we don't care if the parameters mismatch,
-		// just apply them.
-		if (namespace == null || namespace.getName().startsWith("__")) {
+		// Default source types can be overridden
+		if (func.getSignatureSource() == SourceType.DEFAULT) {
 			return false;
 		}
 
@@ -591,43 +596,6 @@ public class DemangledFunction extends DemangledObject {
 			}
 
 			// no params defined, can't tell if detected is different
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
-	 * check if the return/param data types were defined by better than analysis (user, import)
-	 * 
-	 * @param func the function to check
-	 * @return true if the parameters are not undefined, or are of a higher source type.
-	 */
-	protected boolean isDefinedFunctionDataTypes(Function func) {
-		Parameter[] funcParams = func.getParameters();
-
-		for (Parameter parameter : funcParams) {
-			if (parameter.isAutoParameter()) {
-				// automatic parameter, is OK.
-				continue;
-			}
-			// check for default type of data type
-			DataType dt = parameter.getDataType();
-			dt = DataTypeUtilities.getBaseDataType(dt);
-			if (dt == null || Undefined.isUndefined(dt)) {
-				continue;
-			}
-			// if the parameters source is higher than 
-			if (parameter.getSource().isHigherPriorityThan(SourceType.ANALYSIS)) {
-				return true;
-			}
-		}
-
-		// if already a return type and this one has a return type
-		DataType returnDT = func.getReturnType();
-		returnDT = DataTypeUtilities.getBaseDataType(returnDT);
-		if (!(returnDT == null || Undefined.isUndefined(returnDT)) &&
-			this.getReturnType() != null) {
 			return true;
 		}
 
@@ -758,10 +726,11 @@ public class DemangledFunction extends DemangledObject {
 
 		Structure structure = (Structure) existingType;
 		if (structure == null) {
-			structure = DemangledDataType.createPlaceHolderStructure(className, classNamespace);
+			structure = DemangledDataType.createPlaceHolderStructure(className,
+				classNamespace);
 		}
-		structure =
-			(Structure) dataTypeManager.resolve(structure, DataTypeConflictHandler.DEFAULT_HANDLER);
+		structure = (Structure) dataTypeManager.resolve(structure,
+			DataTypeConflictHandler.DEFAULT_HANDLER);
 		return structure;
 	}
 

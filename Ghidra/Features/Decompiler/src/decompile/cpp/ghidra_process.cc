@@ -17,47 +17,44 @@
 #include "flow.hh"
 #include "blockaction.hh"
 
-#ifdef __REMOTE_SOCKET__
+#ifdef OPACTION_DEBUG
 
 #include "ifacedecomp.hh"
 
 static IfaceStatus *ghidra_dcp = (IfaceStatus *)0;
-static RemoteSocket *remote = (RemoteSocket *)0;
 
-/// \brief Establish a debug console for decompilation of the given function
-///
-/// Attempt to connect to a UNIX domain socket and direct the i/o streams to
-/// the decompiler console interface.  The socket must have been previously established
-/// by another process.
-/// From the command-line,  `nc -l -U /tmp/ghidrasocket` for example.
-void connect_to_console(Funcdata *fd)
+void turn_on_debugging(Funcdata *fd)
 
 {
-  if (remote == (RemoteSocket *)0) {
-    remote = new RemoteSocket();
-    if (remote->open("/tmp/ghidrasocket")) {
-      ghidra_dcp = new IfaceStatus("[ghidradbg]> ",*remote->getInputStream(),*remote->getOutputStream());
-      IfaceCapability::registerAllCommands(ghidra_dcp);
-    }
+  if (ghidra_dcp == (IfaceStatus *)0) {
+    ghidra_dcp = new IfaceStatus("[ghidradbg]> ",cin,cout);
+    ghidra_dcp->optr = (ostream *)0;
+    ghidra_dcp->fileoptr = (ostream *)0;
+    IfaceCapability::registerAllCommands(ghidra_dcp);
   }
-  if (!remote->isSocketOpen())
-    return;
-
+  // Check if debug script exists
+  ifstream is("ghidracom.txt");
+  if (!is) return;
+  is.close();
+  
   IfaceDecompData *decomp_data = (IfaceDecompData *)ghidra_dcp->getData("decompile");
   decomp_data->fd = fd;
   decomp_data->conf = fd->getArch();
-  ostream *oldPrintStream = decomp_data->conf->print->getOutputStream();
-  bool emitXml = decomp_data->conf->print->emitsXml();
-  decomp_data->conf->setDebugStream(remote->getOutputStream());
-  decomp_data->conf->print->setOutputStream(remote->getOutputStream());
-  decomp_data->conf->print->setXML(false);
-  ghidra_dcp->reset();
+  ghidra_dcp->pushScript("ghidracom.txt","ghidradbg> ");
+  ghidra_dcp->optr = new ofstream("ghidrares.txt");
+  ghidra_dcp->fileoptr = ghidra_dcp->optr;
+  decomp_data->conf->setDebugStream(ghidra_dcp->optr);
   mainloop(ghidra_dcp);
-  decomp_data->conf->clearAnalysis(fd);
-  decomp_data->conf->print->setOutputStream(oldPrintStream);
-  decomp_data->conf->print->setXML(emitXml);
-  fd->debugDisable();
-  decomp_data->conf->allacts.getCurrent()->clearBreakPoints();
+  ghidra_dcp->popScript();
+}
+
+void turn_off_debugging(Funcdata *fd)
+
+{
+  if (ghidra_dcp->optr != (ostream *)0) {
+    delete ghidra_dcp->optr;
+    ghidra_dcp->optr = (ostream *)0;
+  }
 }
 
 #endif
@@ -216,13 +213,9 @@ void DeregisterProgram::loadParameters(void)
 void DeregisterProgram::rawAction(void)
 
 {
-#ifdef __REMOTE_SOCKET__
+#ifdef OPACTION_DEBUG
     if (ghidra_dcp != (IfaceStatus *)0)
       delete ghidra_dcp;
-    if (remote != (RemoteSocket *)0)
-      delete remote;
-    ghidra_dcp = (IfaceStatus *)0;
-    remote = (RemoteSocket *)0;
 #endif
   if (ghidra != (ArchitectureGhidra *)0) {
     res = 1;
@@ -252,7 +245,6 @@ void FlushNative::rawAction(void)
   ghidra->symboltab->deleteSubScopes(globscope); // Flush cached function and globals database
   ghidra->types->clearNoncore(); // Reset type information
   ghidra->commentdb->clear();	// Clear any comments
-  ghidra->stringManager->clear();	// Clear string decodings
   ghidra->cpool->clear();
   res = 0;
 }
@@ -291,11 +283,14 @@ void DecompileAt::rawAction(void)
     throw LowlevelError(s.str());
   }
   if (!fd->isProcStarted()) {
-#ifdef __REMOTE_SOCKET__
-    connect_to_console(fd);
+#ifdef OPACTION_DEBUG
+    turn_on_debugging(fd);
 #endif
     ghidra->allacts.getCurrent()->reset( *fd );
     ghidra->allacts.getCurrent()->perform( *fd );
+#ifdef OPACTION_DEBUG
+    turn_off_debugging(fd);
+#endif
   }
 
   sout.write("\000\000\001\016",4);
@@ -438,7 +433,6 @@ void SetOptions::rawAction(void)
 {
   res = false;
 
-  ghidra->resetDefaults();
   ghidra->options->restoreXml(doc->getRoot());
   delete doc;
   doc = (Document *)0;

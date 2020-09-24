@@ -96,16 +96,14 @@ public class ConstTpl {
 	}
 
 	public boolean isConstSpace() {
-		if (type == SPACEID) {
+		if (type == SPACEID)
 			return (value_spaceid.getType() == AddressSpace.TYPE_CONSTANT);
-		}
 		return false;
 	}
 
 	public boolean isUniqueSpace() {
-		if (type == SPACEID) {
+		if (type == SPACEID)
 			return (value_spaceid.getType() == AddressSpace.TYPE_UNIQUE);
-		}
 		return false;
 	}
 
@@ -142,38 +140,32 @@ public class ConstTpl {
 			case J_CURSPACE_SIZE:
 				return walker.getCurSpace().getPointerSize();
 			case J_CURSPACE:
-				return walker.getCurSpace().getSpaceID();
+				return walker.getCurSpace().getBaseSpaceID();
 			case HANDLE: {
 				FixedHandle hand = walker.getFixedHandle(handle_index);
 				switch (select) {
 					case V_SPACE:
-						if (hand.offset_space == null) {
-							return hand.space.getSpaceID();
-						}
-						return hand.temp_space.getSpaceID();
+						if (hand.offset_space == null)
+							return hand.space.getBaseSpaceID();
+						return hand.temp_space.getBaseSpaceID();
 					case V_OFFSET:
-						if (hand.offset_space == null) {
+						if (hand.offset_space == null)
 							return hand.offset_offset;
-						}
 						return hand.temp_offset;
 					case V_SIZE:
 						return hand.size;
 					case V_OFFSET_PLUS:
 						if (hand.space.getType() != AddressSpace.TYPE_CONSTANT) {	// If we are not a constant
 							if (hand.offset_space == null)
-							 {
 								return hand.offset_offset + (value_real & 0xffff);		// Adjust offset by truncation amount
-							}
 							return hand.temp_offset + (value_real & 0xffff);
 						}
 						// If we are a constant, shift by the truncation amount
 						long val;
-						if (hand.offset_space == null) {
+						if (hand.offset_space == null)
 							val = hand.offset_offset;
-						}
-						else {
+						else
 							val = hand.temp_offset;
-						}
 						val >>= 8 * (value_real >> 16);
 						return val;
 				}
@@ -183,7 +175,7 @@ public class ConstTpl {
 			case REAL:
 				return value_real;
 			case SPACEID:
-				return value_spaceid.getSpaceID();
+				return value_spaceid.getBaseSpaceID();
 		}
 		return 0;			// Should never reach here
 	}
@@ -196,9 +188,8 @@ public class ConstTpl {
 				FixedHandle hand = walker.getFixedHandle(handle_index);
 				switch (select) {
 					case V_SPACE:
-						if (hand.offset_space == null) {
+						if (hand.offset_space == null)
 							return hand.space;
-						}
 						return hand.temp_space;
 					default:
 						break;
@@ -281,22 +272,18 @@ public class ConstTpl {
 			type = HANDLE;
 			handle_index = (short) SpecXmlUtils.decodeInt(el.getAttribute("val"));
 			String selstr = el.getAttribute("s");
-			if (selstr.equals("space")) {
+			if (selstr.equals("space"))
 				select = V_SPACE;
-			}
-			else if (selstr.equals("offset")) {
+			else if (selstr.equals("offset"))
 				select = V_OFFSET;
-			}
-			else if (selstr.equals("size")) {
+			else if (selstr.equals("size"))
 				select = V_SIZE;
-			}
 			else if (selstr.equals("offset_plus")) {
 				select = V_OFFSET_PLUS;
 				value_real = SpecXmlUtils.decodeLong(el.getAttribute("plus"));
 			}
-			else {
+			else
 				throw new SleighException("Bad handle selector");
-			}
 		}
 		else if (typestr.equals("start")) {
 			type = J_START;
@@ -330,9 +317,8 @@ public class ConstTpl {
 		else if (typestr.equals("flowdest_size")) {
 			type = J_FLOWDEST_SIZE;
 		}
-		else {
+		else
 			throw new SleighException("Bad xml for ConstTpl");
-		}
 		parser.end(el);
 	}
 

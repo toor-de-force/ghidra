@@ -24,7 +24,6 @@ import java.awt.event.KeyListener;
 import javax.swing.*;
 import javax.swing.text.JTextComponent;
 
-import docking.action.MultipleKeyAction;
 import docking.actions.KeyBindingUtils;
 import ghidra.util.bean.GGlassPane;
 import ghidra.util.exception.AssertException;
@@ -137,7 +136,7 @@ public class KeyBindingOverrideKeyEventDispatcher implements KeyEventDispatcher 
 			return false;
 		}
 
-		KeyBindingPrecedence keyBindingPrecedence = getValidKeyBindingPrecedence(action);
+		KeyBindingPrecedence keyBindingPrecedence = action.getKeyBindingPrecedence();
 		if (keyBindingPrecedence == null) {
 			// Odd Code: we use the precedence as a signal to say that, when it is null, there
 			//           are no valid bindings to be processed.  We used to have a isValidContext()
@@ -157,15 +156,6 @@ public class KeyBindingOverrideKeyEventDispatcher implements KeyEventDispatcher 
 			   processActionAtPrecedence(DefaultLevel, keyBindingPrecedence, action, event) ||
 			   throwAssertException();
 		// @formatter:on
-	}
-
-	private KeyBindingPrecedence getValidKeyBindingPrecedence(DockingKeyBindingAction action) {
-
-		if (action instanceof MultipleKeyAction) {
-			MultipleKeyAction multiAction = (MultipleKeyAction) action;
-			return multiAction.geValidKeyBindingPrecedence(focusProvider.getFocusOwner());
-		}
-		return action.getKeyBindingPrecedence();
 	}
 
 	/**

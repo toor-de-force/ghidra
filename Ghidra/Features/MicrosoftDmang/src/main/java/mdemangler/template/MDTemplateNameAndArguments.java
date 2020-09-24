@@ -42,19 +42,12 @@ public class MDTemplateNameAndArguments extends MDParsableItem {
 		return templateName.isTypeCast();
 	}
 
-	public void setName(String name) {
-		templateName.setName(name);
-	}
-
 	public String getName() {
 		return templateName.getName();
 	}
 
-	public void setCastTypeString(String castTypeString) {
-		if (templateName == null) {
-			return;
-		}
-		templateName.setCastTypeString(castTypeString);
+	public void setName(String name) {
+		templateName.setName(name);
 	}
 
 	public MDTemplateArgumentsList getArgumentsList() {

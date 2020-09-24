@@ -31,8 +31,8 @@ public class MDFunctionType extends MDType {
 	private MDCVMod thisPointerCVMod;
 	private MDThrowAttribute throwAttribute;
 	private boolean hasCVModifier = false;
-	private boolean hasReturn;
-	private boolean hasArgs;
+	private boolean hasReturn = true;
+	private boolean hasArgs = true;
 	private boolean isTypeCast;
 	protected boolean fromModifier = false;
 
@@ -43,13 +43,7 @@ public class MDFunctionType extends MDType {
 	}
 
 	public MDFunctionType(MDMang dmang) {
-		this(dmang, true, true);
-	}
-
-	public MDFunctionType(MDMang dmang, boolean hasArgs, boolean hasReturn) {
 		super(dmang);
-		this.hasArgs = hasArgs;
-		this.hasReturn = hasReturn;
 	}
 
 	public MDCallingConvention getCallingConvention() {
@@ -84,12 +78,20 @@ public class MDFunctionType extends MDType {
 		hasCVModifier = true;
 	}
 
-	public boolean hasReturn() {
-		return hasReturn;
+	public void clearHasCVModifier() {
+		hasCVModifier = false;
+	}
+
+	public void setNoReturn() {
+		hasReturn = false;
 	}
 
 	public boolean hasArgs() {
 		return hasArgs;
+	}
+
+	public void setNoArgs() {
+		hasArgs = false;
 	}
 
 	public boolean isTypeCast() {
@@ -129,8 +131,8 @@ public class MDFunctionType extends MDType {
 	@Override
 	public void insert(StringBuilder builder) {
 		super.insert(builder);
-		String badChars = "*&( ";
-		if (builder.length() != 0 && badChars.indexOf(builder.charAt(0)) == -1) {
+		if ((builder.length() != 0) && (builder.charAt(0) != ' ') && (builder.charAt(0) != '*') &&
+			(builder.charAt(0) != '&') && (builder.charAt(0) != '(')) {
 			dmang.insertString(builder, " ");
 		}
 		// Separate conventionBuilder with insertion of MDBasedType is used here to reflect MSFT
@@ -146,20 +148,17 @@ public class MDFunctionType extends MDType {
 		// Following to to clean the Based5 "bug" if seen.  See comments in MDBasedAttribute.
 		dmang.cleanOutput(conventionBuilder);
 		dmang.insertString(builder, conventionBuilder.toString());
-		//This logic moved to MdSpecialName, so that we can get a qualified name with the
-		// appropriate cast-to type in the name.  Keeping here, commented out, for
-		// a digestion period (20200506).
-//		if (hasReturn && isTypeCast) {
-//			StringBuilder retBuilder = new StringBuilder();
-//			retType.insert(retBuilder);
-//			dmang.appendString(builder, " ");
-//			dmang.appendString(builder, retBuilder.toString());
-//		}
+		if (hasReturn && isTypeCast) {
+			StringBuilder retBuilder = new StringBuilder();
+			retType.insert(retBuilder);
+			dmang.appendString(builder, " ");
+			dmang.appendString(builder, retBuilder.toString());
+		}
 		if (fromModifier) {
 			dmang.insertString(builder, "(");
 			dmang.appendString(builder, ")");
 		}
-		if (hasArgs & argsList != null) {
+		if (hasArgs) {
 			dmang.appendString(builder, "(");
 			argsList.insert(builder);
 			dmang.appendString(builder, ")");
@@ -169,7 +168,7 @@ public class MDFunctionType extends MDType {
 			thisPointerCVMod.insert(cvBuilder);
 			dmang.appendString(builder, cvBuilder.toString());
 		}
-		if (hasReturn && retType != null && !isTypeCast) {
+		if (hasReturn && !isTypeCast) {
 			retType.insert(builder);
 		}
 		if (throwAttribute != null) {

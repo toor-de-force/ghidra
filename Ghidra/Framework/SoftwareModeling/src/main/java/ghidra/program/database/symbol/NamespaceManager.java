@@ -124,7 +124,8 @@ public class NamespaceManager implements ManagerDB {
 	 * @param namespace the namespace whose body is to be modified.
 	 * @param set the address set for the new body.
 	 */
-	public void setBody(Namespace namespace, AddressSetView set) throws OverlappingNamespaceException {
+	public void setBody(Namespace namespace, AddressSetView set)
+			throws OverlappingNamespaceException {
 		if (set.getNumAddresses() > Integer.MAX_VALUE) {
 			throw new IllegalArgumentException(
 				"Namespace body size must be less than 0x7fffffff byte addresses");
@@ -132,10 +133,12 @@ public class NamespaceManager implements ManagerDB {
 		lock.acquire();
 		try {
 			AddressSetView oldBody = removeBody(namespace);
-			AddressRange range = overlapsNamespace(set);
-			if (range != null) {
+			try {
+				overlapsNamespace(set);
+			}
+			catch (OverlappingNamespaceException e) {
 				doSetBody(namespace, oldBody);
-				throw new OverlappingNamespaceException(range.getMinAddress(), range.getMaxAddress());
+				throw e;
 			}
 			doSetBody(namespace, set);
 		}
@@ -197,20 +200,19 @@ public class NamespaceManager implements ManagerDB {
 
 	/**
 	 * Checks if an existing namespace's address set intersects with
-	 * the given set. If so, return the first overlapping range.
-	 * @returns null if no overlaps, or an address range of the first overlap
+	 * the given set. If so, then it throws an OverlappingNamespaceException.
+	 * @throws OverlappingNamespaceException if the address set to test overlaps a namespace body.
 	 */
-	public AddressRange overlapsNamespace(AddressSetView set) {
-		AddressRangeIterator addressRanges = set.getAddressRanges();
-		for (AddressRange addressRange : addressRanges) {
-			AddressRangeIterator namesSpaceRanges = namespaceMap.getAddressRanges(
-				addressRange.getMinAddress(), addressRange.getMaxAddress());
-			AddressRange existingRange = namesSpaceRanges.next();
-			if (existingRange != null) {
-				return existingRange;
+	public void overlapsNamespace(AddressSetView set) throws OverlappingNamespaceException {
+		AddressRangeIterator iter =
+			namespaceMap.getAddressRanges(set.getMinAddress(), set.getMaxAddress());
+		while (iter.hasNext()) {
+			AddressRange range = iter.next();
+			if (set.intersects(range.getMinAddress(), range.getMaxAddress())) {
+				throw new OverlappingNamespaceException(range.getMinAddress(),
+					range.getMaxAddress());
 			}
 		}
-		return null;
 	}
 
 	/**

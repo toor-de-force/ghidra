@@ -20,6 +20,10 @@ import java.util.List;
 import javax.swing.Icon;
 
 import docking.widgets.tree.GTreeNode;
+import docking.widgets.tree.GTreeNode;
+import generic.jar.ResourceFile;
+import ghidra.app.script.GhidraScriptUtil;
+import ghidra.app.script.ScriptInfo;
 import resources.ResourceManager;
 
 class RootNode extends GTreeNode {
@@ -45,7 +49,9 @@ class RootNode extends GTreeNode {
 		return false;
 	}
 
-	void insert(String[] categoryPath) {
+	void insert(ResourceFile script) {
+		ScriptInfo info = GhidraScriptUtil.getScriptInfo(script);
+		String[] categoryPath = info.getCategory();
 		GTreeNode parent = this;
 		for (String categoryName : categoryPath) {
 

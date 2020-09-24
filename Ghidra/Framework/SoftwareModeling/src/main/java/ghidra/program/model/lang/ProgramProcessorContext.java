@@ -1,5 +1,6 @@
 /* ###
  * IP: GHIDRA
+ * REVIEWED: YES
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +16,11 @@
  */
 package ghidra.program.model.lang;
 
-import java.math.BigInteger;
-import java.util.List;
-
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.ContextChangeException;
 import ghidra.program.model.listing.ProgramContext;
+
+import java.math.BigInteger;
 
 /**
  * Implementation for the program processor context interface
@@ -45,11 +45,17 @@ public class ProgramProcessorContext implements ProcessorContext {
 		return context.getBaseContextRegister();
 	}
 
+	/**
+	 * @see ghidra.program.model.lang.ProcessorContext#getRegisters()
+	 */
 	@Override
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		return context.getRegisters();
 	}
 
+	/**
+	 * @see ghidra.program.model.lang.ProcessorContext#getRegister(java.lang.String)
+	 */
 	@Override
 	public Register getRegister(String name) {
 		return context.getRegister(name);
@@ -65,6 +71,10 @@ public class ProgramProcessorContext implements ProcessorContext {
 		return context.getRegisterValue(register, addr);
 	}
 
+	/**
+	 * @throws ContextChangeException 
+	 * @see ghidra.program.model.lang.ProcessorContext#setValue(ghidra.program.model.lang.Register, java.math.BigInteger)
+	 */
 	@Override
 	public void setValue(Register register, BigInteger value) throws ContextChangeException {
 		context.setValue(register, addr, addr, value);

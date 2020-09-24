@@ -143,10 +143,7 @@ public class AddBlockModelTest extends AbstractGhidraHeadedIntegrationTest
 		model.setLength(100);
 		assertTrue(model.isValidInfo());
 
-		model.setBlockType(MemoryBlockType.DEFAULT);
-		assertTrue(model.isValidInfo());
-
-		model.setOverlay(true);
+		model.setBlockType(MemoryBlockType.OVERLAY);
 		assertTrue(model.isValidInfo());
 
 		model.setBaseAddress(getAddr(0x2000));
@@ -184,8 +181,7 @@ public class AddBlockModelTest extends AbstractGhidraHeadedIntegrationTest
 		model.setBlockName(".test");
 		model.setStartAddress(getAddr(0x100));
 		model.setLength(100);
-		model.setBlockType(MemoryBlockType.DEFAULT);
-		model.setOverlay(true);
+		model.setBlockType(MemoryBlockType.OVERLAY);
 		model.setInitializedType(InitializedType.INITIALIZED_FROM_VALUE);
 		model.setInitialValue(0xa);
 		assertTrue(model.execute());
@@ -210,8 +206,7 @@ public class AddBlockModelTest extends AbstractGhidraHeadedIntegrationTest
 		model.setBlockName(".test");
 		model.setStartAddress(getAddr(0x01001000));
 		model.setLength(100);
-		model.setBlockType(MemoryBlockType.DEFAULT);
-		model.setOverlay(true);
+		model.setBlockType(MemoryBlockType.OVERLAY);
 		model.setInitializedType(InitializedType.INITIALIZED_FROM_VALUE);
 		model.setInitialValue(0xa);
 		assertTrue(model.execute());

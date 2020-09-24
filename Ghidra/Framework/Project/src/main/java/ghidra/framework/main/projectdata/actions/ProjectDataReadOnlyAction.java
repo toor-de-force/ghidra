@@ -16,7 +16,7 @@
 package ghidra.framework.main.projectdata.actions;
 
 import docking.action.MenuData;
-import ghidra.framework.main.datatable.ProjectDataContext;
+import ghidra.framework.main.datatable.ProjectDataActionContext;
 import ghidra.framework.main.datatable.ProjectDataContextToggleAction;
 import ghidra.framework.main.datatree.DomainFileNode;
 import ghidra.framework.model.DomainFile;
@@ -32,7 +32,7 @@ public class ProjectDataReadOnlyAction extends ProjectDataContextToggleAction {
 	}
 
 	@Override
-	protected void actionPerformed(ProjectDataContext context) {
+	protected void actionPerformed(ProjectDataActionContext context) {
 		DomainFile file = context.getSelectedFiles().get(0);
 		toggleReadOnly(file);
 		Object contextObject = context.getContextObject();
@@ -43,11 +43,14 @@ public class ProjectDataReadOnlyAction extends ProjectDataContextToggleAction {
 	}
 
 	@Override
-	public boolean isAddToPopup(ProjectDataContext context) {
+	public boolean isAddToPopup(ProjectDataActionContext context) {
 		if (!context.isInActiveProject()) {
 			return false;
 		}
 		if (context.getFolderCount() != 0 || context.getFileCount() != 1) {
+			return false;
+		}
+		if (ignoreTransientProject(context)) {
 			return false;
 		}
 
@@ -57,7 +60,7 @@ public class ProjectDataReadOnlyAction extends ProjectDataContextToggleAction {
 	}
 
 	@Override
-	protected boolean isEnabledForContext(ProjectDataContext context) {
+	protected boolean isEnabledForContext(ProjectDataActionContext context) {
 		if (context.getFolderCount() != 0 || context.getFileCount() != 1) {
 			return false;
 		}

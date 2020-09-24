@@ -95,13 +95,10 @@ class DataComponent extends DataDB {
 		}
 		DataType pdt = parent.getBaseDataType();
 		if (pdt instanceof Composite) {
-			Composite composite = (Composite) pdt;
-			// if we are deleted, the parent may not have as many components as it used to,
-			// so if our index is bigger than the number of components, then we are deleted.
-			if (indexInParent >= composite.getNumComponents()) {
+			DataTypeComponent c = ((Composite) pdt).getComponent(indexInParent);
+			if (c == null) {
 				return true;
 			}
-			DataTypeComponent c = composite.getComponent(indexInParent);
 			component = c;
 			dataType = c.getDataType();
 			offset = component.getOffset();

@@ -39,7 +39,6 @@ import ghidra.test.ToyProgramBuilder;
 import ghidra.util.Lock;
 import ghidra.util.SaveableColor;
 import ghidra.util.exception.NoValueException;
-import ghidra.util.task.TaskMonitor;
 import ghidra.util.task.TaskMonitorAdapter;
 
 /**
@@ -1009,7 +1008,7 @@ public class CodeManagerTest extends AbstractGenericTest {
 			instructionAt = pdb.getListing().getInstructionAt(addr(0x2000));
 			assertEquals(FlowOverride.CALL, instructionAt.getFlowOverride());
 
-			pdb.getCodeManager().reDisassembleAllInstructions(TaskMonitor.DUMMY);
+			pdb.getCodeManager().reDisassembleAllInstructions(0, TaskMonitorAdapter.DUMMY_MONITOR);
 
 			instructionAt = pdb.getListing().getInstructionAt(addr(0x2000));
 			assertEquals(FlowOverride.CALL, instructionAt.getFlowOverride());
@@ -1033,7 +1032,7 @@ public class CodeManagerTest extends AbstractGenericTest {
 			Instruction instructionAt = pdb.getListing().getInstructionAt(addr(0x2000));
 			assertEquals(FlowOverride.NONE, instructionAt.getFlowOverride());
 
-			pdb.getCodeManager().reDisassembleAllInstructions(TaskMonitor.DUMMY);
+			pdb.getCodeManager().reDisassembleAllInstructions(0, TaskMonitorAdapter.DUMMY_MONITOR);
 
 			instructionAt = pdb.getListing().getInstructionAt(addr(0x2002));
 			assertEquals(null, instructionAt);

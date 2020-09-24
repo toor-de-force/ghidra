@@ -15,12 +15,10 @@
  */
 package ghidra.python;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotSame;
 
 import org.junit.*;
 
-import ghidra.app.plugin.core.osgi.BundleHost;
-import ghidra.app.script.GhidraScriptUtil;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.test.AbstractGhidraHeadedIntegrationTest;
 import ghidra.test.TestEnv;
@@ -38,14 +36,12 @@ public class PythonPluginTest extends AbstractGhidraHeadedIntegrationTest {
 	public void setUp() throws Exception {
 		env = new TestEnv();
 		tool = env.getTool();
-		GhidraScriptUtil.initialize(new BundleHost(), null);
 		tool.addPlugin(PythonPlugin.class.getName());
 		plugin = env.getPlugin(PythonPlugin.class);
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		GhidraScriptUtil.dispose();
 		env.dispose();
 	}
 

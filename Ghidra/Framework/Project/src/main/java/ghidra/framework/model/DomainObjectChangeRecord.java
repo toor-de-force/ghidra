@@ -19,10 +19,7 @@ import java.io.Serializable;
 
 /**
  * Information about a change that was made to a domain object. The
- * record is delivered as part of the change notification. The event
- * types correspond to the constants in
- * {@link ghidra.program.util.ChangeManager ChangeManager}.
- * @see ghidra.program.util.ChangeManager ChangeManager
+ * record is delivered as part of the change notification.
  */
 public class DomainObjectChangeRecord implements Serializable {
 	private final static long serialVersionUID = 1;

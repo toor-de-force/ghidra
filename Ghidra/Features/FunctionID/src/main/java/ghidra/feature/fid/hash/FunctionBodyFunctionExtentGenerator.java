@@ -19,7 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ghidra.program.model.address.AddressSetView;
-import ghidra.program.model.listing.*;
+import ghidra.program.model.listing.CodeUnit;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.listing.InstructionIterator;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Program;
 
 /**
  * Calculates the function extent by the function body; i.e. what's saved
@@ -30,15 +35,9 @@ import ghidra.program.model.listing.*;
 public class FunctionBodyFunctionExtentGenerator implements FunctionExtentGenerator {
 	@Override
 	public List<CodeUnit> calculateExtent(Function func) {
-		if (func == null) {
-			return List.of();
-		}
-		final AddressSetView body = func.getBody();
-		if (body.isEmpty()) {
-			return List.of();
-		}
 		ArrayList<CodeUnit> units = new ArrayList<CodeUnit>();
 
+		final AddressSetView body = func.getBody();
 		final Program program = func.getProgram();
 		final Listing listing = program.getListing();
 

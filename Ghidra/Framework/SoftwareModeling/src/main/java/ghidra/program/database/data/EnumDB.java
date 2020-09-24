@@ -46,7 +46,7 @@ class EnumDB extends DataTypeDB implements Enum {
 	private List<BitGroup> bitGroups;
 
 	EnumDB(DataTypeManagerDB dataMgr, DBObjectCache<DataTypeDB> cache, EnumDBAdapter adapter,
-			EnumValueDBAdapter valueAdapter, Record record) {
+			EnumValueDBAdapter valueAdapter, Record record) throws IOException {
 		super(dataMgr, cache, record);
 		this.adapter = adapter;
 		this.valueAdapter = valueAdapter;
@@ -86,8 +86,8 @@ class EnumDB extends DataTypeDB implements Enum {
 
 		long[] ids = valueAdapter.getValueIdsInEnum(key);
 
-		for (long id : ids) {
-			Record rec = valueAdapter.getRecord(id);
+		for (int i = 0; i < ids.length; i++) {
+			Record rec = valueAdapter.getRecord(ids[i]);
 			String valueName = rec.getString(EnumValueDBAdapter.ENUMVAL_NAME_COL);
 			long value = rec.getLongValue(EnumValueDBAdapter.ENUMVAL_VALUE_COL);
 			addToCache(valueName, value);
@@ -252,10 +252,10 @@ class EnumDB extends DataTypeDB implements Enum {
 
 			long[] ids = valueAdapter.getValueIdsInEnum(key);
 
-			for (long id : ids) {
-				Record rec = valueAdapter.getRecord(id);
+			for (int i = 0; i < ids.length; i++) {
+				Record rec = valueAdapter.getRecord(ids[i]);
 				if (valueName.equals(rec.getString(EnumValueDBAdapter.ENUMVAL_NAME_COL))) {
-					valueAdapter.removeRecord(id);
+					valueAdapter.removeRecord(ids[i]);
 					break;
 				}
 			}
@@ -285,8 +285,8 @@ class EnumDB extends DataTypeDB implements Enum {
 			valueMap = new HashMap<>();
 
 			long[] ids = valueAdapter.getValueIdsInEnum(key);
-			for (long id : ids) {
-				valueAdapter.removeRecord(id);
+			for (int i = 0; i < ids.length; i++) {
+				valueAdapter.removeRecord(ids[i]);
 			}
 
 			int oldLength = getLength();
@@ -298,11 +298,11 @@ class EnumDB extends DataTypeDB implements Enum {
 			}
 
 			String[] names = enumm.getNames();
-			for (String name2 : names) {
-				long value = enumm.getValue(name2);
-				valueAdapter.createRecord(key, name2, value);
+			for (int i = 0; i < names.length; i++) {
+				long value = enumm.getValue(names[i]);
+				valueAdapter.createRecord(key, names[i], value);
 				adapter.updateRecord(record, true);
-				addToCache(name2, value);
+				addToCache(names[i], value);
 			}
 
 			if (oldLength != newLength) {

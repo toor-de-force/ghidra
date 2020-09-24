@@ -20,9 +20,9 @@ import java.util.HashSet;
 import javax.swing.tree.TreePath;
 
 import docking.widgets.tree.GTreeNode;
-import ghidra.framework.main.datatable.ProjectTreeAction;
+import ghidra.framework.main.datatable.ProjectDataTreeContextAction;
 
-public abstract class ProjectDataCopyCutBaseAction extends ProjectTreeAction {
+public abstract class ProjectDataCopyCutBaseAction extends ProjectDataTreeContextAction {
 
 	public ProjectDataCopyCutBaseAction(String name, String owner) {
 		super(name, owner);

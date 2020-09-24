@@ -25,8 +25,8 @@ import ghidra.app.context.NavigatableContextAction;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.services.CodeViewerService;
 import ghidra.framework.main.FrontEndable;
-import ghidra.framework.main.datatable.ProjectDataContext;
-import ghidra.framework.main.datatable.FrontendProjectTreeAction;
+import ghidra.framework.main.datatable.ProjectDataActionContext;
+import ghidra.framework.main.datatable.ProjectDataContextAction;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.DomainFolder;
 import ghidra.framework.plugintool.*;
@@ -83,17 +83,17 @@ public class ExporterPlugin extends Plugin implements FrontEndable {
 	}
 
 	private void createFrontEndAction() {
-		DockingAction action = new FrontendProjectTreeAction("Export", getName()) {
+		DockingAction action = new ProjectDataContextAction("Export", getName()) {
 
 			@Override
-			protected void actionPerformed(ProjectDataContext context) {
+			protected void actionPerformed(ProjectDataActionContext context) {
 				DomainFile domainFile = context.getSelectedFiles().get(0);
 				ExporterDialog dialog = new ExporterDialog(tool, domainFile);
 				tool.showDialog(dialog);
 			}
 
 			@Override
-			protected boolean isEnabledForContext(ProjectDataContext context) {
+			protected boolean isEnabledForContext(ProjectDataActionContext context) {
 				List<DomainFolder> selectedFolders = context.getSelectedFolders();
 				if (!selectedFolders.isEmpty()) {
 					return false;

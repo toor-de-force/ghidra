@@ -138,7 +138,7 @@ public class GhidraPythonInterpreter extends InteractiveInterpreter {
 			systemState.path.append(Py.newString(resourceFile.getFile(false).getAbsolutePath()));
 		}
 
-		for (ResourceFile resourceFile : GhidraScriptUtil.getExplodedCompiledSourceBundlePaths()) {
+		for (ResourceFile resourceFile : GhidraScriptUtil.getScriptBinDirectories()) {
 			systemState.path.append(Py.newString(resourceFile.getFile(false).getAbsolutePath()));
 		}
 

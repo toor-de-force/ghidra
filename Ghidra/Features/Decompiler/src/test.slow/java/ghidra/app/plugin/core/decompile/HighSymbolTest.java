@@ -25,13 +25,11 @@ import docking.widgets.fieldpanel.field.Field;
 import docking.widgets.fieldpanel.support.FieldLocation;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.function.DeleteFunctionCmd;
-import ghidra.app.cmd.label.RenameLabelCmd;
 import ghidra.app.decompiler.ClangToken;
 import ghidra.app.decompiler.ClangVariableToken;
 import ghidra.app.decompiler.component.ClangTextField;
 import ghidra.app.decompiler.component.DecompilerPanel;
-import ghidra.app.plugin.core.decompile.actions.IsolateVariableTask;
-import ghidra.app.plugin.core.decompile.actions.RenameVariableTask;
+import ghidra.app.plugin.core.decompile.actions.*;
 import ghidra.framework.options.Options;
 import ghidra.program.database.symbol.CodeSymbol;
 import ghidra.program.model.address.Address;
@@ -81,11 +79,12 @@ public class HighSymbolTest extends AbstractDecompilerTest {
 	private void renameGlobalVariable(HighSymbol highSymbol, ClangToken tokenAtCursor,
 			String newName) {
 		Address addr = highSymbol.getStorage().getMinAddress();
-		RenameLabelCmd cmd =
-			new RenameLabelCmd(addr, highSymbol.getName(), newName, SourceType.USER_DEFINED);
+		RenameGlobalVariableTask rename = new RenameGlobalVariableTask(provider.getTool(),
+			highSymbol.getProgram(), provider.getDecompilerPanel(), tokenAtCursor, addr);
 
+		assertTrue(rename.isValid(newName));
 		modifyProgram(p -> {
-			cmd.applyTo(highSymbol.getProgram());
+			rename.commit();
 		});
 		waitForDecompiler();
 	}
@@ -200,7 +199,7 @@ public class HighSymbolTest extends AbstractDecompilerTest {
 	public void testHighSymbol_localStackDynamic() {
 		decompile("10015a6");
 		ClangTextField line = getLineContaining(" = 0xc;");
-		FieldLocation loc = loc(line.getLineNumber(), 2);
+		FieldLocation loc = loc(line.getLineNumber(), 5);
 		ClangToken token = line.getToken(loc);
 		assertTrue(token instanceof ClangVariableToken);
 		HighVariable variable = token.getHighVariable();
@@ -322,7 +321,7 @@ public class HighSymbolTest extends AbstractDecompilerTest {
 	public void testHighSymbol_multipleUsePoints() {
 		decompile("1001915");
 		ClangTextField line = getLineContaining("0x4e");
-		FieldLocation loc = loc(line.getLineNumber(), 2);
+		FieldLocation loc = loc(line.getLineNumber(), 4);
 		ClangToken token = line.getToken(loc);
 		assertTrue(token instanceof ClangVariableToken);
 		HighVariable variable = token.getHighVariable();

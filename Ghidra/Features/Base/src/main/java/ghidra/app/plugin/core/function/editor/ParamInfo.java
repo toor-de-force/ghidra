@@ -110,9 +110,6 @@ public class ParamInfo {
 	}
 
 	void setOrdinal(int i) {
-		if (original != null && original.getOrdinal() != i) {
-			original = null;
-		}
 		this.ordinal = i;
 	}
 

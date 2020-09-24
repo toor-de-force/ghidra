@@ -36,7 +36,7 @@ public class DataTypeUrl {
 	// see javadoc for format
 	private static String PROTOCOL = "datatype";
 	private static Pattern URL_PATTERN =
-		Pattern.compile(PROTOCOL + ":/(\\d+)\\?uid=(\\d*)&name=(.+)");
+		Pattern.compile(PROTOCOL + ":/(\\d+)\\?uid=(\\d*)&name=(\\w+)");
 
 	private UniversalID dataTypeManagerId;
 	private UniversalID dataTypeId;

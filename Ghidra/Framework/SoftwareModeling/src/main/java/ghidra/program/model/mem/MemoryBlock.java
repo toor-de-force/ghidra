@@ -22,7 +22,6 @@ import java.util.List;
 import ghidra.framework.store.LockException;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
-import ghidra.util.NamingUtilities;
 import ghidra.util.exception.DuplicateNameException;
 
 /**
@@ -87,15 +86,12 @@ public interface MemoryBlock extends Serializable, Comparable<MemoryBlock> {
 	public String getName();
 
 	/**
-	 * Set the name for this block (See {@link NamingUtilities#isValidName(String)} for
-	 * naming rules).  Specified name must not conflict with an address space name.
+	 * Set the name for this block.
 	 * @param name the new name for this block.
-	 * @throws DuplicateNameException if name conflicts with an address space name
-	 * @throws IllegalArgumentException if invalid name specified
+	 * @throws DuplicateNameException 
 	 * @throws LockException renaming an Overlay block without exclusive access
 	 */
-	public void setName(String name)
-			throws IllegalArgumentException, DuplicateNameException, LockException;
+	public void setName(String name) throws DuplicateNameException, LockException;
 
 	/**
 	 * Get the comment associated with this block.
@@ -245,7 +241,7 @@ public interface MemoryBlock extends Serializable, Comparable<MemoryBlock> {
 	public int putBytes(Address addr, byte[] b, int off, int len) throws MemoryAccessException;
 
 	/**
-	 * Get the type for this block: DEFAULT, BIT_MAPPED, or BYTE_MAPPED
+	 * Get the type for this block: TYPE_DEFAULT, TYPE_OVERLAY, TYPE_BIT_MAPPED, or TYPE_BYTE_MAPPED
 	 */
 	public MemoryBlockType getType();
 
@@ -258,12 +254,6 @@ public interface MemoryBlock extends Serializable, Comparable<MemoryBlock> {
 	 * Returns true if this is either a bit-mapped or byte-mapped block
 	 */
 	public boolean isMapped();
-
-	/**
-	 * Returns true if this is an overlay block (i.e., contained within overlay space).
-	 * @return true if this is an overlay block
-	 */
-	public boolean isOverlay();
 
 	/**
 	 * Returns true if this memory block is a real loaded block (i.e. RAM) and not a special block
@@ -295,4 +285,5 @@ public interface MemoryBlock extends Serializable, Comparable<MemoryBlock> {
 		MemoryBlock block = memory.getBlock(address);
 		return block != null && MemoryBlock.EXTERNAL_BLOCK_NAME.equals(block.getName());
 	}
+
 }

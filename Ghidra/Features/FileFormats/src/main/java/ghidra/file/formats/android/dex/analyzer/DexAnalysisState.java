@@ -89,22 +89,18 @@ final public class DexAnalysisState implements AnalysisState {
 	 * @return the EncodedMethod
 	 */
 	public EncodedMethod getEncodedMethod(Address addr) {
-		synchronized (this) {
-			if (methodMap == null) {
-				buildMethodMap();
-
-			}
+		if (methodMap == null) {
+			buildMethodMap();
 		}
 		return methodMap.get(addr);
 	}
 
 	/**
 	 * Return persistent <code>DexAnalysisState</code> which corresponds to the specified program instance.
-	 * @param program is the specified program instance
+	 * @param program
 	 * @return <code>DexAnalysisState</code> for specified program instance
-	 * @throws IOException if there are problems during construction of the state object
 	 */
-	public synchronized static DexAnalysisState getState(Program program) throws IOException {
+	public static DexAnalysisState getState(Program program) throws IOException {
 		DexAnalysisState analysisState =
 			AnalysisStateInfo.getAnalysisState(program, DexAnalysisState.class);
 		if (analysisState == null) {

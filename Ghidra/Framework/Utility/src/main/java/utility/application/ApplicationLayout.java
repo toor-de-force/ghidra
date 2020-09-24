@@ -17,7 +17,8 @@ package utility.application;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
 
 import generic.jar.ResourceFile;
 import ghidra.framework.ApplicationProperties;
@@ -43,7 +44,7 @@ public abstract class ApplicationLayout {
 	protected File userSettingsDir;
 	protected ResourceFile patchDir;
 	protected ResourceFile extensionArchiveDir;
-	protected List<ResourceFile> extensionInstallationDirs;
+	protected ResourceFile extensionInstallationDir;
 
 	/**
 	 * Gets the application properties from the application layout
@@ -120,13 +121,13 @@ public abstract class ApplicationLayout {
 	}
 
 	/**
-	 * Returns an {@link List ordered list} of the application Extensions installation directories.
+	 * Returns the application Extensions installation folder.
 	 * 
-	 * @return an {@link List ordered list} of the application Extensions installation directories.
-	 *   Could be empty if the {@link ApplicationLayout} does not support application Extensions.
+	 * @return the application Extensions installation directory.  Could be null if the 
+	 *   {@link ApplicationLayout} does not support application Extensions.
 	 */
-	public final List<ResourceFile> getExtensionInstallationDirs() {
-		return extensionInstallationDirs;
+	public final ResourceFile getExtensionInstallationDir() {
+		return extensionInstallationDir;
 	}
 
 	/**

@@ -15,34 +15,27 @@
  */
 package ghidra.app.plugin.core.decompile.actions;
 
-import java.util.Iterator;
-
-import ghidra.app.services.GraphDisplayBroker;
-import ghidra.framework.plugintool.PluginTool;
+import ghidra.app.services.GraphService;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.graph.*;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.pcode.*;
-import ghidra.service.graph.*;
 import ghidra.util.Msg;
 import ghidra.util.NumericUtilities;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.GraphException;
-import ghidra.util.task.Task;
-import ghidra.util.task.TaskMonitor;
+import ghidra.util.task.*;
+
+import java.util.Iterator;
 
 public class ASTGraphTask extends Task {
-	enum GraphType {
-		CONTROL_FLOW_GRAPH("AST Control Flow"), DATA_FLOW_GRAPH("AST Data Flow");
-		private String name;
-		GraphType(String name) {
-			this.name = name;
-		}
 
-		public String getName() {
-			return name;
-		}
-	}
+	static final int CONTROL_FLOW_GRAPH = 0;
+	static final int DATA_FLOW_GRAPH = 1;
+
+	private static final String[] GRAPH_TYPES =
+		new String[] { "AST Control Flow", "AST Data Flow" };
 
 	private static final String CODE_ATTRIBUTE = "Code";
 	private static final String SYMBOLS_ATTRIBUTE = "Symbols";
@@ -62,19 +55,19 @@ public class ASTGraphTask extends Task {
 	private final static String DATA_NODE = "Data";
 	// "6";       // Data Node, used for indirection
 
-	private GraphDisplayBroker graphService;
+	private GraphService graphService;
 	private boolean newGraph;
 	private int codeLimitPerBlock;
 	private Address location;
 	private HighFunction hfunction;
-	private GraphType graphType;
+	private int graphType;
 
 	private int uniqueNum = 0;
-	private PluginTool tool;
+	private TaskListener listener;
 
-	public ASTGraphTask(GraphDisplayBroker graphService, boolean newGraph, int codeLimitPerBlock,
-			Address location, HighFunction hfunction, GraphType graphType, PluginTool tool) {
-		super("Graph " + graphType.getName(), true, false, true);
+	public ASTGraphTask(GraphService graphService, boolean newGraph, int codeLimitPerBlock,
+			Address location, HighFunction hfunction, int graphType) {
+		super("Graph " + GRAPH_TYPES[graphType], true, false, true);
 
 		this.graphService = graphService;
 		this.newGraph = newGraph;
@@ -82,60 +75,87 @@ public class ASTGraphTask extends Task {
 		this.location = location;
 		this.hfunction = hfunction;
 		this.graphType = graphType;
-		this.tool = tool;
+
+		this.listener = new TaskListener() {
+			@Override
+			public void taskCancelled(Task task) {
+				// don't care
+			}
+
+			@Override
+			public void taskCompleted(Task task) {
+				try {
+					GraphDisplay graphDisplay =
+						ASTGraphTask.this.graphService.getGraphDisplay(false);
+					if (graphDisplay != null) {
+						graphDisplay.popup();
+					}
+				}
+				catch (GraphException e) {
+					// the programmer was too lazy to handle this
+				}
+			}
+		};
+		addTaskListener(listener);
 	}
 
 	@Override
 	public void run(TaskMonitor monitor) {
 
 		// get a new graph
-		AttributedGraph graph = new AttributedGraph();
+		GraphData graph = graphService.createGraphContent();
+		if (graph == null)
+			return;
 
+		ASTGraphSelectionHandler handler = null;
 		try {
 			monitor.setMessage("Computing Graph...");
-			if (graphType == GraphType.DATA_FLOW_GRAPH) {
+			if (graphType == DATA_FLOW_GRAPH) {
 				createDataFlowGraph(graph, monitor);
 			}
 			else {
 				createControlFlowGraph(graph, monitor);
 			}
-			GraphDisplay display = graphService.getDefaultGraphDisplay(!newGraph, monitor);
-			ASTGraphDisplayListener displayListener =
-				new ASTGraphDisplayListener(tool, display, hfunction, graphType);
-			display.setGraphDisplayListener(displayListener);
+			handler = new ASTGraphSelectionHandler(graphService, hfunction, graphType);
+		}
+		catch (CancelledException e1) {
+			return;
+		}
 
+		GraphDisplay display;
+		try {
 			monitor.setMessage("Obtaining handle to graph provider...");
-			if (monitor.isCancelled()) {
+			display = graphService.getGraphDisplay(newGraph);
+			if (monitor.isCancelled())
 				return;
-			}
 			monitor.setCancelEnabled(false);
+
+			if (!newGraph) {
+				display.clear();
+			}
+			display.setSelectionHandler(handler);
 
 			monitor.setMessage("Rendering Graph...");
 			display.defineVertexAttribute(CODE_ATTRIBUTE);
 			display.defineVertexAttribute(SYMBOLS_ATTRIBUTE);
 
-			display.setVertexLabel(CODE_ATTRIBUTE, GraphDisplay.ALIGN_LEFT, 12, true,
-				graphType == GraphType.CONTROL_FLOW_GRAPH ? (codeLimitPerBlock + 1) : 1);
+			display.setGraphData(graph);
 
-			String description =
-				graphType == GraphType.DATA_FLOW_GRAPH ? "AST Data Flow" : "AST Control Flow";
-			display.setGraph(graph, description, false, monitor);
+			display.setVertexLabel(CODE_ATTRIBUTE, GraphDisplay.ALIGN_LEFT, 12, true,
+				graphType == CONTROL_FLOW_GRAPH ? (codeLimitPerBlock + 1) : 1);
+
 			// set the graph location
 			if (location != null) {
-				display.setLocation(displayListener.getVertexIdForAddress(location));
+				display.locate(location, false);
 			}
 
 		}
 		catch (GraphException e) {
 			Msg.showError(this, null, "Graph Error", e.getMessage());
 		}
-		catch (CancelledException e1) {
-			return;
-		}
-
 	}
 
-	protected void createDataFlowGraph(AttributedGraph graph, TaskMonitor monitor)
+	protected void createDataFlowGraph(GraphData graph, TaskMonitor monitor)
 			throws CancelledException {
 		Iterator<PcodeOpAST> opIter = hfunction.getPcodeOps();
 		while (opIter.hasNext()) {
@@ -144,7 +164,7 @@ public class ASTGraphTask extends Task {
 		}
 	}
 
-	private void graphOpData(AttributedGraph graph, PcodeOpAST op, TaskMonitor monitor)
+	private void graphOpData(GraphData graph, PcodeOpAST op, TaskMonitor monitor)
 			throws CancelledException {
 
 		// TODO: Dropped INDIRECT pcode ops ??
@@ -153,13 +173,13 @@ public class ASTGraphTask extends Task {
 			return;
 		}
 
-		AttributedVertex opVertex = getOpVertex(graph, op, monitor);
+		GraphVertex opVertex = getOpVertex(graph, op, monitor);
 
 		Varnode output = op.getOutput();
 		if (output != null) {
 			opVertex = getOpVertex(graph, op, monitor);
-			AttributedVertex outVertex = getDataVertex(graph, output, monitor);
-			graph.addEdge(opVertex, outVertex);
+			GraphVertex outVertex = getDataVertex(graph, output, monitor);
+			graph.createEdge(Integer.toString(++uniqueNum), opVertex, outVertex);
 			// TODO: set edge attributes ??
 		}
 
@@ -184,26 +204,26 @@ public class ASTGraphTask extends Task {
 				if (opVertex == null) {
 					opVertex = getOpVertex(graph, op, monitor);
 				}
-				AttributedVertex inVertex = getDataVertex(graph, input, monitor);
-				graph.addEdge(inVertex, opVertex);
+				GraphVertex inVertex = getDataVertex(graph, input, monitor);
+				graph.createEdge(Integer.toString(++uniqueNum), inVertex, opVertex);
 				// TODO: set edge attributes ??
 			}
 		}
 	}
 
-	private AttributedVertex getOpVertex(AttributedGraph graph, PcodeOpAST op, TaskMonitor monitor) {
+	private GraphVertex getOpVertex(GraphData graph, PcodeOpAST op, TaskMonitor monitor) {
 
 		String key = "O_" + Integer.toString(op.getSeqnum().getTime());
-		AttributedVertex vertex = graph.getVertex(key);
+		GraphVertex vertex = graph.getVertex(key);
 
 		if (vertex == null) {
-			vertex = graph.addVertex(key, key);
+			vertex = graph.createVertex(key, key);
 			setOpVertexAttributes(vertex, op);
 		}
 		return vertex;
 	}
 
-	private void setOpVertexAttributes(AttributedVertex vertex, PcodeOpAST op) {
+	private void setOpVertexAttributes(GraphVertex vertex, PcodeOpAST op) {
 
 		vertex.setAttribute(CODE_ATTRIBUTE, formatOpMnemonic(op));
 
@@ -223,11 +243,11 @@ public class ASTGraphTask extends Task {
 		vertex.setAttribute(VERTEX_TYPE_ATTRIBUTE, vertexType);
 	}
 
-	private AttributedVertex getDataVertex(AttributedGraph graph, Varnode node, TaskMonitor monitor) {
+	private GraphVertex getDataVertex(GraphData graph, Varnode node, TaskMonitor monitor) {
 
 		// TODO: Missing Varnode unique ID ??
 
-		AttributedVertex vertex = null;
+		GraphVertex vertex = null;
 		HighVariable var = node.getHigh();
 		String key;
 		if (var != null) {
@@ -239,13 +259,13 @@ public class ASTGraphTask extends Task {
 		}
 
 		if (vertex == null) {
-			vertex = graph.addVertex(key, key);
+			vertex = graph.createVertex(key, key);
 			setVarnodeVertexAttributes(vertex, node);
 		}
 		return vertex;
 	}
 
-	private void setVarnodeVertexAttributes(AttributedVertex vertex, Varnode node) {
+	private void setVarnodeVertexAttributes(GraphVertex vertex, Varnode node) {
 
 		String label = "";
 		HighVariable var = node.getHigh();
@@ -257,7 +277,7 @@ public class ASTGraphTask extends Task {
 		vertex.setAttribute(VERTEX_TYPE_ATTRIBUTE, DATA_NODE);
 	}
 
-	protected void createControlFlowGraph(AttributedGraph graph, TaskMonitor monitor)
+	protected void createControlFlowGraph(GraphData graph, TaskMonitor monitor)
 			throws CancelledException {
 		Iterator<PcodeBlockBasic> pblockIter = hfunction.getBasicBlocks().iterator();
 		while (pblockIter.hasNext()) {
@@ -266,32 +286,32 @@ public class ASTGraphTask extends Task {
 		}
 	}
 
-	private void graphPcodeBlock(AttributedGraph graph, PcodeBlock pblock, TaskMonitor monitor)
+	private void graphPcodeBlock(GraphData graph, PcodeBlock pblock, TaskMonitor monitor)
 			throws CancelledException {
 
 		if (pblock == null) {
 			return;
 		}
 
-		AttributedVertex fromVertex = getBlockVertex(graph, pblock, monitor);
+		GraphVertex fromVertex = getBlockVertex(graph, pblock, monitor);
 
 		int outCnt = pblock.getOutSize();
 		for (int i = 0; i < outCnt; i++) {
 			monitor.checkCanceled();
 			PcodeBlock outPBlock = pblock.getOut(i);
-			AttributedVertex toVertex = getBlockVertex(graph, outPBlock, monitor);
-			graph.addEdge(fromVertex, toVertex);
+			GraphVertex toVertex = getBlockVertex(graph, outPBlock, monitor);
+			graph.createEdge(Integer.toString(++uniqueNum), fromVertex, toVertex);
 			// TODO: set edge attributes ??
 		}
 	}
 
-	private AttributedVertex getBlockVertex(AttributedGraph graph, PcodeBlock pblock, TaskMonitor monitor) {
+	private GraphVertex getBlockVertex(GraphData graph, PcodeBlock pblock, TaskMonitor monitor) {
 
 		String key = Integer.toString(pblock.getIndex());
-		AttributedVertex vertex = graph.getVertex(key);
+		GraphVertex vertex = graph.getVertex(key);
 
 		if (vertex == null) {
-			vertex = graph.addVertex(key, key);
+			vertex = graph.createVertex(key, key);
 			if (pblock instanceof PcodeBlockBasic) {
 				setBlockVertexAttributes(vertex, (PcodeBlockBasic) pblock);
 			}
@@ -303,7 +323,7 @@ public class ASTGraphTask extends Task {
 		return vertex;
 	}
 
-	private void setBlockVertexAttributes(AttributedVertex vertex, PcodeBlockBasic basicBlk) {
+	private void setBlockVertexAttributes(GraphVertex vertex, PcodeBlockBasic basicBlk) {
 
 		// Build Pcode representation
 		StringBuffer buf = new StringBuffer();
@@ -420,4 +440,19 @@ public class ASTGraphTask extends Task {
 		}
 		return node.toString();
 	}
+
+//	private void assignVertexSymbols(GraphVertex vertex, Address addr) {
+//		Symbol[] symbols = function.getProgram().getSymbolTable().getSymbols(addr);
+//		if (symbols.length != 0) {
+//			StringBuffer buf = new StringBuffer();
+//			for (int i = 0; i < symbols.length; i++) {
+//				if (i != 0) {
+//					buf.append('\n');
+//				}
+//				buf.append(symbols[i].getName());
+//			}
+//			vertex.setAttribute(SYMBOLS_ATTRIBUTE, buf.toString());	
+//		}
+//	}
+
 }

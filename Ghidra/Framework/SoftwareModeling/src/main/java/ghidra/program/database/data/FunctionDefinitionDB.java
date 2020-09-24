@@ -177,24 +177,15 @@ class FunctionDefinitionDB extends DataTypeDB implements FunctionDefinition {
 	}
 
 	private void doReplaceWith(FunctionDefinition functionDefinition) {
-
-		lock.acquire();
+		setArguments(functionDefinition.getArguments());
 		try {
-			checkDeleted();
-
-			setArguments(functionDefinition.getArguments());
-			try {
-				setReturnType(functionDefinition.getReturnType());
-			}
-			catch (IllegalArgumentException e) {
-				setReturnType(DEFAULT);
-			}
-			setVarArgs(functionDefinition.hasVarArgs());
-			setGenericCallingConvention(functionDefinition.getGenericCallingConvention());
+			setReturnType(functionDefinition.getReturnType());
 		}
-		finally {
-			lock.release();
+		catch (IllegalArgumentException e) {
+			setReturnType(DEFAULT);
 		}
+		setVarArgs(functionDefinition.hasVarArgs());
+		setGenericCallingConvention(functionDefinition.getGenericCallingConvention());
 	}
 
 	@Override
@@ -341,35 +332,22 @@ class FunctionDefinitionDB extends DataTypeDB implements FunctionDefinition {
 	}
 
 	@Override
-	public boolean isEquivalent(DataType dataType) {
-
-		if (dataType == this) {
+	public boolean isEquivalent(DataType dt) {
+		if (dt == this) {
 			return true;
 		}
-		if (!(dataType instanceof FunctionDefinition)) {
+		if (!(dt instanceof FunctionDefinition)) {
 			return false;
 		}
 
 		checkIsValid();
-		if (resolving) { // actively resolving children
-			if (dataType.getUniversalID().equals(getUniversalID())) {
+		if (resolving) {
+			if (dt.getUniversalID().equals(getUniversalID())) {
 				return true;
 			}
-			return DataTypeUtilities.equalsIgnoreConflict(getPathName(), dataType.getPathName());
+			return DataTypeUtilities.equalsIgnoreConflict(getPathName(), dt.getPathName());
 		}
-
-		Boolean isEquivalent = dataMgr.getCachedEquivalence(this, dataType);
-		if (isEquivalent != null) {
-			return isEquivalent;
-		}
-
-		try {
-			isEquivalent = isEquivalentSignature((FunctionSignature) dataType);
-		}
-		finally {
-			dataMgr.putCachedEquivalence(this, dataType, isEquivalent);
-		}
-		return isEquivalent;
+		return isEquivalentSignature((FunctionSignature) dt);
 	}
 
 	@Override
@@ -382,15 +360,15 @@ class FunctionDefinitionDB extends DataTypeDB implements FunctionDefinition {
 		if ((DataTypeUtilities.equalsIgnoreConflict(signature.getName(), getName())) &&
 			((comment == null && myComment == null) ||
 				(comment != null && comment.equals(myComment))) &&
-			(DataTypeUtilities.isSameOrEquivalentDataType(getReturnType(),
-				signature.getReturnType())) &&
+			(DataTypeUtilities.isSameOrEquivalentDataType(signature.getReturnType(),
+				getReturnType())) &&
 			(getGenericCallingConvention() == signature.getGenericCallingConvention()) &&
 			(hasVarArgs() == signature.hasVarArgs())) {
 			ParameterDefinition[] args = signature.getArguments();
 			ParameterDefinition[] thisArgs = this.getArguments();
 			if (args.length == thisArgs.length) {
 				for (int i = 0; i < args.length; i++) {
-					if (!thisArgs[i].isEquivalent(args[i])) {
+					if (!args[i].isEquivalent(thisArgs[i])) {
 						return false;
 					}
 				}
@@ -673,10 +651,5 @@ class FunctionDefinitionDB extends DataTypeDB implements FunctionDefinition {
 		finally {
 			lock.release();
 		}
-	}
-
-	@Override
-	public String toString() {
-		return getPrototypeString(true);
 	}
 }

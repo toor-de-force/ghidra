@@ -24,11 +24,14 @@ import docking.ActionContext;
 import docking.action.DockingAction;
 import docking.action.MenuData;
 import docking.widgets.OptionDialog;
+import docking.widgets.tree.GTreeNode;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.framework.main.FrontEndTool;
 import ghidra.framework.main.FrontEndable;
-import ghidra.framework.main.datatable.ProjectDataContext;
+import ghidra.framework.main.datatable.DomainFileInfo;
+import ghidra.framework.main.datatable.ProjectDataActionContext;
+import ghidra.framework.main.datatree.DomainFileNode;
 import ghidra.framework.model.*;
 import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
@@ -68,39 +71,45 @@ public final class LanguageProviderPlugin extends Plugin implements FrontEndable
 
 		setLanguageAction = new DockingAction("Set Language", getName()) {
 
+			DomainFile domainFile;
+
 			@Override
 			public void actionPerformed(ActionContext context) {
-				DomainFile file = getDomainFile((ProjectDataContext) context);
-				if (file != null) {
-					setLanguage(file);
+				if (domainFile != null) {
+					setLanguage(domainFile);
 				}
 			}
 
 			@Override
-			public boolean isEnabledForContext(ActionContext actionContext) {
-				if (!(actionContext instanceof ProjectDataContext)) {
-					return false;
+			public boolean isEnabledForContext(ActionContext context) {
+				Object contextObject = context.getContextObject();
+				if (contextObject instanceof GTreeNode) {
+					GTreeNode node = (GTreeNode) contextObject;
+					if (node instanceof DomainFileNode) {
+						domainFile = ((DomainFileNode) node).getDomainFile();
+						return domainFile.isInWritableProject() &&
+							Program.class.isAssignableFrom(domainFile.getDomainObjectClass());
+					}
 				}
-				ProjectDataContext context = (ProjectDataContext) actionContext;
-				DomainFile file = getDomainFile(context);
-				if (file == null) {
+
+				if (!(context instanceof ProjectDataActionContext)) {
 					return false;
 				}
 
-				return file.isInWritableProject() &&
-					Program.class.isAssignableFrom(file.getDomainObjectClass());
-			}
-
-			private DomainFile getDomainFile(ProjectDataContext context) {
-				if (context.getFileCount() == 1 && context.getFolderCount() == 0) {
-					return context.getSelectedFiles().get(0);
+				if (!(contextObject instanceof DomainFileInfo)) {
+					return false;
 				}
-				return null;
+
+				DomainFileInfo info = (DomainFileInfo) context.getContextObject();
+				domainFile = info.getDomainFile();
+				return domainFile.isInWritableProject() &&
+					Program.class.isAssignableFrom(domainFile.getDomainObjectClass());
 			}
 
 			@Override
 			public void dispose() {
 				super.dispose();
+				domainFile = null;
 			}
 
 		};
@@ -319,7 +328,7 @@ public final class LanguageProviderPlugin extends Plugin implements FrontEndable
 					String defaultToolName = toolServices.getDefaultToolTemplate(file).getName();
 					for (PluginTool t : toolServices.getRunningTools()) {
 						if (t.getName().equals(defaultToolName)) {
-							openTool = t;
+							openTool = (PluginTool) t;
 							break;
 						}
 					}
@@ -327,7 +336,7 @@ public final class LanguageProviderPlugin extends Plugin implements FrontEndable
 						openTool.acceptDomainFiles(new DomainFile[] { file });
 					}
 					else {
-						openTool = tool.getToolServices().launchDefaultTool(file);
+						openTool = (PluginTool) tool.getToolServices().launchDefaultTool(file);
 					}
 				});
 			}

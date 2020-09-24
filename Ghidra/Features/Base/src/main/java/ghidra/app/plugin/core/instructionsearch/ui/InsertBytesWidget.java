@@ -128,7 +128,6 @@ public class InsertBytesWidget extends DialogComponentProvider implements KeyLis
 	@Override
 	protected void dialogShown() {
 		populateDialog();
-		toFront();
 	}
 
 	/*********************************************************************************************
@@ -143,7 +142,7 @@ public class InsertBytesWidget extends DialogComponentProvider implements KeyLis
 	protected JPanel createWorkPanel() {
 
 		JPanel contentPanel = new JPanel();
-		contentPanel.setMinimumSize(new Dimension(500, 300));
+		contentPanel.setMinimumSize(new Dimension(300, 150));
 
 		// Create the input text widget and give it a scrollbar.
 		inputBytesTA = new HintTextAreaIS(HINT_TEXT);
@@ -211,6 +210,7 @@ public class InsertBytesWidget extends DialogComponentProvider implements KeyLis
 		// clicking the appropriate button.
 		inputBytesTA.setText(sb.toString());
 		selectionModeWidget.setInputMode(InputMode.BINARY);
+		selectionModeWidget.hexRB.doClick();
 
 		inputBytesTA.setSelectionStart(0);
 		inputBytesTA.setSelectionEnd(inputBytesTA.getText().length());
@@ -468,20 +468,6 @@ public class InsertBytesWidget extends DialogComponentProvider implements KeyLis
 		inputBytesTA.setValid();
 		errorMsg = "";
 		return true;
-	}
-
-	/**
-	 * Flags the given string as invalid input
-	 * 
-	 */
-	public void setInputInvalid() {
-		inputBytesTA.setError();
-		if (selectionModeWidget.getInputMode() == InputMode.BINARY) {
-			errorMsg = ERROR_MSG_BINARY_INPUT;
-		}
-		else {
-			errorMsg = ERROR_MSG_HEX_INPUT;
-		}
 	}
 
 	@Override

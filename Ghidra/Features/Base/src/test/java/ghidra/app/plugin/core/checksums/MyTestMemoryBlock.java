@@ -171,11 +171,6 @@ class MyTestMemoryBlock implements MemoryBlock {
 	}
 
 	@Override
-	public boolean isOverlay() {
-		return false;
-	}
-
-	@Override
 	public int compareTo(MemoryBlock block) {
 		throw new UnsupportedOperationException();
 	}

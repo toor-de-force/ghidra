@@ -664,7 +664,7 @@ public class ClearTest extends AbstractGhidraHeadedIntegrationTest {
 
 		assertTrue(cb.goToField(addr("0x10022cc"), "Bytes", 0, 4));
 		ProgramContext context = program.getProgramContext();
-		Register ax = context.getRegister("AX");
+		Register ax = context.getRegister("ax");
 		SetRegisterCmd cmd =
 			new SetRegisterCmd(ax, addr("0x10022cc"), addr("0x10022ce"), BigInteger.valueOf(5));
 		applyCmd(program, cmd);

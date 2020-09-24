@@ -17,8 +17,6 @@ package ghidra.framework.main;
 
 import static org.junit.Assert.*;
 
-import java.util.List;
-
 import org.junit.Test;
 
 import generic.test.AbstractGenericTest;
@@ -46,20 +44,19 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 	public void testPspecParsing_x64() throws Exception {
 		ProgramBuilder pBuilder = new ProgramBuilder("test", ProgramBuilder._X64);
 		testProgram = pBuilder.getProgram();
-		List<Register> vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
+		Register[] vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
 		String[] intelVectorRegisterNames = getIntelVectorRegisterNames();
-		assertEquals(intelVectorRegisterNames.length, vectorRegs.size());
+		assertEquals(intelVectorRegisterNames.length, vectorRegs.length);
 		for (int i = 0; i < intelVectorRegisterNames.length; i++) {
-			Register vectorReg = vectorRegs.get(i);
-			assertTrue(vectorRegs.get(i).isVectorRegister());
-			assertEquals(intelVectorRegisterNames[i], vectorReg.getName());
-			if (vectorReg.getName().startsWith("Y")) {
-				assertEquals(YMM_BIT_SIZE, vectorReg.getBitLength());
+			assertTrue(vectorRegs[i].isVectorRegister());
+			assertEquals(intelVectorRegisterNames[i], vectorRegs[i].getName());
+			if (vectorRegs[i].getName().startsWith("Y")) {
+				assertEquals(YMM_BIT_SIZE, vectorRegs[i].getBitLength());
 			}
 			else {
-				assertEquals(XMM_BIT_SIZE, vectorReg.getBitLength());
+				assertEquals(XMM_BIT_SIZE, vectorRegs[i].getBitLength());
 			}
-			int[] lanes = vectorReg.getLaneSizes();
+			int[] lanes = vectorRegs[i].getLaneSizes();
 			assertEquals(4, lanes.length);
 			//test lane sizes: should be 1,2,4,8
 			int laneSize = 1;
@@ -67,7 +64,7 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 				assertEquals(laneSize, lane);
 				laneSize *= 2;
 			}
-			assertFalse(vectorReg.isValidLaneSize(3));
+			assertFalse(vectorRegs[i].isValidLaneSize(3));
 		}
 	}
 
@@ -75,20 +72,19 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 	public void testPspecParsing_x86() throws Exception {
 		ProgramBuilder pBuilder = new ProgramBuilder("test", ProgramBuilder._X86);
 		testProgram = pBuilder.getProgram();
-		List<Register> vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
+		Register[] vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
 		String[] intelVectorRegisterNames = getIntelVectorRegisterNames();
-		assertEquals(intelVectorRegisterNames.length, vectorRegs.size());
+		assertEquals(intelVectorRegisterNames.length, vectorRegs.length);
 		for (int i = 0; i < intelVectorRegisterNames.length; i++) {
-			Register vectorReg = vectorRegs.get(i);
-			assertTrue(vectorReg.isVectorRegister());
-			assertEquals(intelVectorRegisterNames[i], vectorReg.getName());
-			if (vectorReg.getName().startsWith("Y")) {
-				assertEquals(YMM_BIT_SIZE, vectorReg.getBitLength());
+			assertTrue(vectorRegs[i].isVectorRegister());
+			assertEquals(intelVectorRegisterNames[i], vectorRegs[i].getName());
+			if (vectorRegs[i].getName().startsWith("Y")) {
+				assertEquals(YMM_BIT_SIZE, vectorRegs[i].getBitLength());
 			}
 			else {
-				assertEquals(XMM_BIT_SIZE, vectorReg.getBitLength());
+				assertEquals(XMM_BIT_SIZE, vectorRegs[i].getBitLength());
 			}
-			int[] lanes = vectorReg.getLaneSizes();
+			int[] lanes = vectorRegs[i].getLaneSizes();
 			assertEquals(4, lanes.length);
 			//test lane sizes: should be 1,2,4,8
 			int laneSize = 1;
@@ -96,7 +92,7 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 				assertEquals(laneSize, lane);
 				laneSize *= 2;
 			}
-			assertFalse(vectorReg.isValidLaneSize(3));
+			assertFalse(vectorRegs[i].isValidLaneSize(3));
 		}
 	}
 
@@ -104,15 +100,14 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 	public void testPspecParsing_PPC_32() throws Exception {
 		ProgramBuilder pBuilder = new ProgramBuilder("test", ProgramBuilder._PPC_32);
 		testProgram = pBuilder.getProgram();
-		List<Register> vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
+		Register[] vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
 		String[] powerPcVectorRegisterNames = getPowerPCVectorRegisterNames();
-		assertEquals(powerPcVectorRegisterNames.length, vectorRegs.size());
-		for (int i = 0; i < powerPcVectorRegisterNames.length; i++) {
-			Register vectorReg = vectorRegs.get(i);
-			assertTrue(vectorReg.isVectorRegister());
-			assertEquals(powerPcVectorRegisterNames[i], vectorReg.getName());
-			assertEquals(VSX_BIT_SIZE, vectorReg.getBitLength());
-			int[] lanes = vectorReg.getLaneSizes();
+		assertEquals(powerPcVectorRegisterNames.length, vectorRegs.length);
+		for (int i = 0; i < vectorRegs.length; i++) {
+			assertTrue(vectorRegs[i].isVectorRegister());
+			assertEquals(powerPcVectorRegisterNames[i], vectorRegs[i].getName());
+			assertEquals(VSX_BIT_SIZE, vectorRegs[i].getBitLength());
+			int[] lanes = vectorRegs[i].getLaneSizes();
 			assertEquals(3, lanes.length);
 			//lane sizes should be 1, 2, 4
 			int size = 1;
@@ -120,7 +115,7 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 				assertEquals(size, lane);
 				size *= 2;
 			}
-			assertFalse(vectorReg.isValidLaneSize(5));
+			assertFalse(vectorRegs[i].isValidLaneSize(5));
 		}
 	}
 
@@ -128,15 +123,14 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 	public void testPspecParsing_PPC_6432() throws Exception {
 		ProgramBuilder pBuilder = new ProgramBuilder("test", ProgramBuilder._PPC_6432);
 		testProgram = pBuilder.getProgram();
-		List<Register> vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
+		Register[] vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
 		String[] powerPcVectorRegisterNames = getPowerPCVectorRegisterNames();
-		assertEquals(powerPcVectorRegisterNames.length, vectorRegs.size());
-		for (int i = 0; i < powerPcVectorRegisterNames.length; i++) {
-			Register vectorReg = vectorRegs.get(i);
-			assertTrue(vectorReg.isVectorRegister());
-			assertEquals(powerPcVectorRegisterNames[i], vectorReg.getName());
-			assertEquals(VSX_BIT_SIZE, vectorReg.getBitLength());
-			int[] lanes = vectorReg.getLaneSizes();
+		assertEquals(powerPcVectorRegisterNames.length, vectorRegs.length);
+		for (int i = 0; i < vectorRegs.length; i++) {
+			assertTrue(vectorRegs[i].isVectorRegister());
+			assertEquals(powerPcVectorRegisterNames[i], vectorRegs[i].getName());
+			assertEquals(VSX_BIT_SIZE, vectorRegs[i].getBitLength());
+			int[] lanes = vectorRegs[i].getLaneSizes();
 			assertEquals(3, lanes.length);
 			//lane sizes should be 1, 2, 4
 			int size = 1;
@@ -144,7 +138,7 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 				assertEquals(size, lane);
 				size *= 2;
 			}
-			assertFalse(vectorReg.isValidLaneSize(5));
+			assertFalse(vectorRegs[i].isValidLaneSize(5));
 		}
 	}
 
@@ -152,15 +146,14 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 	public void testPspecParsing_ARM() throws Exception {
 		ProgramBuilder pBuilder = new ProgramBuilder("test", ProgramBuilder._ARM);
 		testProgram = pBuilder.getProgram();
-		List<Register> vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
+		Register[] vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
 		String[] armVectorRegisterNames = getArmVectorRegisterNames();
-		assertEquals(armVectorRegisterNames.length, vectorRegs.size());
-		for (int i = 0; i < armVectorRegisterNames.length; i++) {
-			Register vectorReg = vectorRegs.get(i);
-			assertTrue(vectorReg.isVectorRegister());
-			assertEquals(armVectorRegisterNames[i], vectorReg.getName());
-			assertEquals(NEON_BIT_SIZE, vectorReg.getBitLength());
-			int[] laneSizes = vectorReg.getLaneSizes();
+		assertEquals(armVectorRegisterNames.length, vectorRegs.length);
+		for (int i = 0; i < vectorRegs.length; i++) {
+			assertTrue(vectorRegs[i].isVectorRegister());
+			assertEquals(armVectorRegisterNames[i], vectorRegs[i].getName());
+			assertEquals(NEON_BIT_SIZE, vectorRegs[i].getBitLength());
+			int[] laneSizes = vectorRegs[i].getLaneSizes();
 			assertEquals(3, laneSizes.length);
 			//lane sizes should be 1, 2, 4
 			int size = 1;
@@ -168,7 +161,7 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 				assertEquals(size, laneSize);
 				size *= 2;
 			}
-			assertFalse(vectorReg.isValidLaneSize(5));
+			assertFalse(vectorRegs[i].isValidLaneSize(5));
 		}
 	}
 
@@ -176,25 +169,24 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 	public void testPspecParsing_AARCH64() throws Exception {
 		ProgramBuilder pBuilder = new ProgramBuilder("test", ProgramBuilder._AARCH64);
 		testProgram = pBuilder.getProgram();
-		List<Register> vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
+		Register[] vectorRegs = testProgram.getLanguage().getSortedVectorRegisters();
 		String[] aarch64VectorRegisterNames = getAarch64VectorRegisterNames();
-		assertEquals(aarch64VectorRegisterNames.length, vectorRegs.size());
-		for (int i = 0; i < aarch64VectorRegisterNames.length; i++) {
-			Register vectorReg = vectorRegs.get(i);
-			assertTrue(vectorReg.isVectorRegister());
-			assertEquals(aarch64VectorRegisterNames[i], vectorReg.getName());
-			switch (vectorReg.getName().substring(0, 1)) {
+		assertEquals(aarch64VectorRegisterNames.length, vectorRegs.length);
+		for (int i = 0; i < vectorRegs.length; i++) {
+			assertTrue(vectorRegs[i].isVectorRegister());
+			assertEquals(aarch64VectorRegisterNames[i], vectorRegs[i].getName());
+			switch (vectorRegs[i].getName().substring(0, 1)) {
 				case "z":
-					assertEquals(SVE_BIT_SIZE, vectorReg.getBitLength());
+					assertEquals(SVE_BIT_SIZE, vectorRegs[i].getBitLength());
 					break;
 				case "q":
-					assertEquals(NEON_BIT_SIZE, vectorReg.getBitLength());
+					assertEquals(NEON_BIT_SIZE, vectorRegs[i].getBitLength());
 					break;
 				default:
 					throw new IllegalArgumentException(
-						"bad vector register name: " + vectorReg.getName());
+						"bad vector register name: " + vectorRegs[i].getName());
 			}
-			int[] laneSizes = vectorReg.getLaneSizes();
+			int[] laneSizes = vectorRegs[i].getLaneSizes();
 			assertEquals(4, laneSizes.length);
 			//sizes should be 1,2,4,8
 			int size = 1;
@@ -202,7 +194,7 @@ public class VectorRegisterPspecTest extends AbstractGenericTest {
 				assertEquals(size, laneSize);
 				size *= 2;
 			}
-			assertFalse(vectorReg.isValidLaneSize(3));
+			assertFalse(vectorRegs[i].isValidLaneSize(3));
 		}
 	}
 

@@ -121,8 +121,6 @@ public interface Language {
 
 	/**
 	 * Return true if the instructions in this language support Pcode.
-	 * 
-	 * @return true if language supports the use of pcode
 	 */
 	public boolean supportsPcode();
 
@@ -130,8 +128,8 @@ public interface Language {
 	 * Returns true if the language has defined the specified location as
 	 * volatile.
 	 * 
-	 * @param addr location address
-	 * @return true if specified address is within a volatile range
+	 * @param addr
+	 *            location address
 	 */
 	public boolean isVolatile(Address addr);
 
@@ -163,8 +161,6 @@ public interface Language {
 	 * Get the total number of user defined pcode names.
 	 * 
 	 * Note: only works for Pcode based languages
-	 * 
-	 * @return number of user defined pcodeops
 	 */
 	public int getNumberOfUserDefinedOpNames();
 
@@ -174,9 +170,6 @@ public interface Language {
 	 * known.
 	 * 
 	 * Note: only works for Pcode based languages
-	 * 
-	 * @param index user defined pcodeop index
-	 * @return pcodeop name or null if not defined
 	 */
 	public String getUserDefinedOpName(int index);
 
@@ -206,21 +199,11 @@ public interface Language {
 	public Register getRegister(AddressSpace addrspc, long offset, int size);
 
 	/**
-	 * Get an unsorted unmodifiable list of Register objects that this language defines
-	 * (including context registers).
+	 * get the array of Register objects that this language supports.
 	 * 
-	 * @return unmodifiable list of processor registers.
+	 * @return the array of processor registers.
 	 */
-	public List<Register> getRegisters();
-
-	/**
-	 * Get an alphabetical sorted unmodifiable list of original register names 
-	 * (including context registers).  Names correspond to orignal register
-	 * name and not aliases which may be defined.
-	 * 
-	 * @return alphabetical sorted unmodifiable list of original register names.
-	 */
-	public List<String> getRegisterNames();
+	public Register[] getRegisters();
 
 	/**
 	 * Get a register given the name of the register
@@ -244,6 +227,13 @@ public interface Language {
 	public Register getRegister(Address addr, int size);
 
 	/**
+	 * Return the list of labels for well-known locations.
+	 * 
+	 * @return AddressLabelPair[] empty array if there are no labels
+	 */
+	public List<AddressLabelInfo> getDefaultLabels();
+
+	/**
 	 * Get the default program counter register for this language if there is
 	 * one.
 	 * 
@@ -252,19 +242,10 @@ public interface Language {
 	public Register getProgramCounter();
 
 	/**
-	 * Returns processor context base register or null if one has not been defined by the
+	 * Returns context base register or null if one has not been defined by the
 	 * language. 
-	 * @return base context register or null if not defined
 	 */
 	public Register getContextBaseRegister();
-
-	/**
-	 * Get an unsorted unmodifiable list of processor context registers that this language defines
-	 * (includes context base register and its context field registers).
-	 * 
-	 * @return unmodifiable list of processor registers.
-	 */
-	public List<Register> getContextRegisters();
 
 	/**
 	 * Returns the default memory blocks for this language.
@@ -273,8 +254,7 @@ public interface Language {
 	public MemoryBlockDefinition[] getDefaultMemoryBlocks();
 
 	/**
-	 * Returns the default symbols for this language.  This list does not 
-	 * contain registers.
+	 * Returns the default symbols for this language.
 	 * @return the default symbols for this language
 	 */
 	public List<AddressLabelInfo> getDefaultSymbols();
@@ -303,18 +283,16 @@ public interface Language {
 	public void applyContextSettings(DefaultProgramContext ctx);
 
 	/**
-	 * Refreshes the definition of this language if possible.  Use of this method is 
-	 * intended for development purpose only since stale references to prior
-	 * language resources (e.g., registers) may persist.
+	 * Refreshes the definition of this language if possible (statically defined
+	 * languages can safely do nothing).
 	 * @param taskMonitor monitor for progress back to the user
-	 * @throws IOException if error occurs while reloading language spec file(s)
+	 * @throws IOException 
 	 */
 	public void reloadLanguage(TaskMonitor taskMonitor) throws IOException;
 
 	/**
 	 * Returns a list of all compatible compiler spec descriptions.
 	 * The first item in the list is the default.
-	 * @return list of all compatible compiler specifications descriptions
 	 */
 	public List<CompilerSpecDescription> getCompatibleCompilerSpecDescriptions();
 
@@ -412,9 +390,9 @@ public interface Language {
 	public Exception getManualException();
 
 	/**
-	 * Returns an unmodifiable list of vector registers, sorted first by size and then by name.
-	 * @return unmodifiable list of vector registers.
+	 * Returns the array of vector registers, sorted first by size and then by name.
+	 * @return sorted array of vector registers.
 	 */
-	public List<Register> getSortedVectorRegisters();
+	public Register[] getSortedVectorRegisters();
 
 }

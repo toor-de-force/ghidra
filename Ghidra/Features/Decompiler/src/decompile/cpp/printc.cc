@@ -38,7 +38,6 @@ OpToken PrintC::binary_plus = { "+", 2, 50, true, OpToken::binary, 1, 0, (OpToke
 OpToken PrintC::binary_minus = { "-", 2, 50, false, OpToken::binary, 1, 0, (OpToken *)0 };
 OpToken PrintC::shift_left = { "<<", 2, 46, false, OpToken::binary, 1, 0, (OpToken *)0 };
 OpToken PrintC::shift_right = { ">>", 2, 46, false, OpToken::binary, 1, 0, (OpToken *)0 };
-OpToken PrintC::shift_sright = { ">>", 2, 46, false, OpToken::binary, 1, 0, (OpToken *)0 };
 OpToken PrintC::less_than = { "<", 2, 42, false, OpToken::binary, 1, 0, (OpToken *)0 };
 OpToken PrintC::less_equal = { "<=", 2, 42, false, OpToken::binary, 1, 0, (OpToken *)0 };
 OpToken PrintC::greater_than = { ">", 2, 42, false, OpToken::binary, 1, 0, (OpToken *)0 };
@@ -95,6 +94,16 @@ PrintLanguage *PrintCCapability::buildLanguage(Architecture *glb)
 PrintC::PrintC(Architecture *g,const string &nm) : PrintLanguage(g,nm)
 
 {
+  option_NULL = false;
+  option_inplace_ops = false;
+  option_convention = true;
+  option_nocasts = false;
+  option_unplaced = false;
+  option_hide_exts = true;
+  option_space_after_comma = false;
+  option_newline_before_else = true;
+  option_newline_before_opening_brace = false;
+  option_newline_after_prototype = true;
   nullToken = "NULL";
   
   // Set the flip tokens
@@ -106,7 +115,7 @@ PrintC::PrintC(Architecture *g,const string &nm) : PrintLanguage(g,nm)
   not_equal.negate = &equal;
 
   castStrategy = new CastStrategyC();
-  resetDefaultsPrintC();
+  setCStyleComments();
 }
 
 /// Push nested components of a data-type declaration onto a stack, so we can access it bottom up
@@ -164,68 +173,6 @@ void PrintC::pushPrototypeInputs(const FuncProto *proto)
 	// In C++, empty parens mean void, we use the ANSI C convention
 	pushAtom(Atom("",blanktoken,EmitXml::no_color)); // An empty list of parameters
       }
-    }
-  }
-}
-
-/// Calculate what elements of a given symbol's namespace path are necessary to distinguish
-/// it within the current scope. Then print these elements.
-/// \param symbol is the given symbol
-void PrintC::pushSymbolScope(const Symbol *symbol)
-
-{
-  int4 scopedepth;
-  if (namespc_strategy == MINIMAL_NAMESPACES)
-    scopedepth = symbol->getResolutionDepth(curscope);
-  else if (namespc_strategy == ALL_NAMESPACES) {
-    if (symbol->getScope() == curscope)
-      scopedepth = 0;
-    else
-      scopedepth = symbol->getResolutionDepth((const Scope *)0);
-  }
-  else
-    scopedepth = 0;
-  if (scopedepth != 0) {
-    vector<const Scope *> scopeList;
-    const Scope *point = symbol->getScope();
-    for(int4 i=0;i<scopedepth;++i) {
-      scopeList.push_back(point);
-      point = point->getParent();
-      pushOp(&scope, (PcodeOp *)0);
-    }
-    for(int4 i=scopedepth-1;i>=0;--i) {
-      pushAtom(Atom(scopeList[i]->getName(),syntax,EmitXml::global_color,(PcodeOp *)0,(Varnode *)0));
-    }
-  }
-}
-
-/// Emit the elements of the given function's namespace path that distinguish it within
-/// the current scope.
-/// \param fd is the given function
-void PrintC::emitSymbolScope(const Symbol *symbol)
-
-{
-  int4 scopedepth;
-  if (namespc_strategy == MINIMAL_NAMESPACES)
-    scopedepth = symbol->getResolutionDepth(curscope);
-  else if (namespc_strategy == ALL_NAMESPACES) {
-    if (symbol->getScope() == curscope)
-      scopedepth = 0;
-    else
-      scopedepth = symbol->getResolutionDepth((const Scope *)0);
-  }
-  else
-    scopedepth = 0;
-  if (scopedepth != 0) {
-    vector<const Scope *> scopeList;
-    const Scope *point = symbol->getScope();
-    for(int4 i=0;i<scopedepth;++i) {
-      scopeList.push_back(point);
-      point = point->getParent();
-    }
-    for(int4 i=scopedepth-1;i>=0;--i) {
-      emit->print(scopeList[i]->getName().c_str(), EmitXml::global_color);
-      emit->print(scope.print, EmitXml::no_color);
     }
   }
 }
@@ -511,40 +458,27 @@ void PrintC::opCall(const PcodeOp *op)
 {
   pushOp(&function_call,op);
   const Varnode *callpoint = op->getIn(0);
-  FuncCallSpecs *fc;
   if (callpoint->getSpace()->getType()==IPTR_FSPEC) {
-    fc = FuncCallSpecs::getFspecFromConst(callpoint->getAddr());
+    FuncCallSpecs *fc = FuncCallSpecs::getFspecFromConst(callpoint->getAddr());
     if (fc->getName().size()==0) {
       string name = genericFunctionName(fc->getEntryAddress());
       pushAtom(Atom(name,functoken,EmitXml::funcname_color,op,(const Funcdata *)0));
     }
-    else {
-      Funcdata *fd = fc->getFuncdata();
-      if (fd != (Funcdata *)0)
-	pushSymbolScope(fd->getSymbol());
+    else
       pushAtom(Atom(fc->getName(),functoken,EmitXml::funcname_color,op,(const Funcdata *)0));
-    }
   }
   else {
     clear();
     throw LowlevelError("Missing function callspec");
   }
-  // TODO: Cannot hide "this" on a direct call until we print the whole
-  // thing with the proper C++ method invocation format. Otherwise the output
-  // gives no indication of what object has a method being called.
-  // int4 skip = getHiddenThisSlot(op, fc);
-  int4 skip = -1;
-  int4 count = op->numInput() - 1;	// Number of parameter expressions printed
-  count -= (skip < 0) ? 0 : 1;		// Subtract one if "this" is hidden
-  if (count > 0) {
-    for(int4 i=0;i<count-1;++i)
+  int4 startparam = isSet(hide_thisparam) && op->hasThisPointer() ? 2 : 1;
+  if (op->numInput() > startparam) {
+    for(int4 i=startparam;i<op->numInput()-1;++i)
       pushOp(&comma,op);
-    // implied vn's pushed on in reverse order for efficiency
-    // see PrintLanguage::pushVnImplied
-    for(int4 i=op->numInput()-1;i>=1;--i) {
-      if (i == skip) continue;
+  // implied vn's pushed on in reverse order for efficiency
+  // see PrintLanguage::pushVnImplied
+    for(int4 i=op->numInput()-1;i>=startparam;--i)
       pushVnImplied(op->getIn(i),op,mods);
-    }
   }
   else				// Push empty token for void
     pushAtom(Atom("",blanktoken,EmitXml::no_color));
@@ -555,29 +489,18 @@ void PrintC::opCallind(const PcodeOp *op)
 {
   pushOp(&function_call,op);
   pushOp(&dereference,op);
-  const Funcdata *fd = op->getParent()->getFuncdata();
-  FuncCallSpecs *fc = fd->getCallSpecs(op);
-  if (fc == (FuncCallSpecs *)0)
-    throw LowlevelError("Missing indirect function callspec");
-  int4 skip = getHiddenThisSlot(op, fc);
-  int4 count = op->numInput() - 1;
-  count -= (skip < 0) ? 0 : 1;
-  if (count > 1) {	// Multiple parameters
+  // implied vn's pushed on in reverse order for efficiency
+  // see PrintLanguage::pushVnImplied
+  int4 startparam = isSet(hide_thisparam) && op->hasThisPointer() ? 2 : 1;
+  if (op->numInput()>startparam + 1) {	// Multiple parameters
     pushVnImplied(op->getIn(0),op,mods);
-    for(int4 i=0;i<count-1;++i)
+    for(int4 i=startparam;i<op->numInput()-1;++i)
       pushOp(&comma,op);
-    // implied vn's pushed on in reverse order for efficiency
-    // see PrintLanguage::pushVnImplied
-    for(int4 i=op->numInput()-1;i>=1;--i) {
-      if (i == skip) continue;
+    for(int4 i=op->numInput()-1;i>=startparam;--i)
       pushVnImplied(op->getIn(i),op,mods);
-    }
   }
-  else if (count == 1) {	// One parameter
-    if (skip == 1)
-      pushVnImplied(op->getIn(2),op,mods);
-    else
-      pushVnImplied(op->getIn(1),op,mods);
+  else if (op->numInput()==startparam + 1) {	// One parameter
+    pushVnImplied(op->getIn(startparam),op,mods);
     pushVnImplied(op->getIn(0),op,mods);
   }
   else {			// A void function
@@ -733,13 +656,6 @@ void PrintC::opPtradd(const PcodeOp *op)
 {
   bool printval = isSet(print_load_value|print_store_value);
   uint4 m = mods & ~(print_load_value|print_store_value);
-  if (!printval) {
-    TypePointer *tp = (TypePointer *)op->getIn(0)->getHigh()->getType();
-    if (tp->getMetatype() == TYPE_PTR) {
-      if (tp->getPtrTo()->getMetatype() == TYPE_ARRAY)
-	printval = true;
-    }
-  }
   if (printval)			// Use array notation if we need value
     pushOp(&subscript,op);
   else				// just a '+'
@@ -806,10 +722,8 @@ void PrintC::opPtrsub(const PcodeOp *op)
     int4 newoff;
     const TypeField *fld = ((TypeStruct *)ct)->getField((int4)suboff,0,&newoff);
     if (fld == (const TypeField *)0) {
-      if (ct->getSize() <= suboff) {
-	clear();
+      if (ct->getSize() <= suboff)
 	throw LowlevelError("PTRSUB out of bounds into struct");
-      }
       // Try to match the Ghidra's default field name from DataTypeComponent.getDefaultFieldName
       ostringstream s;
       s << "field_0x" << hex << suboff;
@@ -1177,59 +1091,38 @@ void PrintC::push_integer(uintb val,int4 sz,bool sign,
 /// \param op is the PcodeOp using the value
 void PrintC::push_float(uintb val,int4 sz,const Varnode *vn,const PcodeOp *op)
 {
-  string token;
+  ostringstream t;
 
   const FloatFormat *format = glb->translate->getFloatFormat(sz);
   if (format == (const FloatFormat *)0) {
-    token = "FLOAT_UNKNOWN";
+    t << "FLOAT_UNKNOWN";
   }
   else {
     FloatFormat::floatclass type;
     double floatval = format->getHostFloat(val,&type);
     if (type == FloatFormat::infinity) {
       if (format->extractSign(val))
-	token = "-INFINITY";
-      else
-	token = "INFINITY";
+	t << '-';
+      t << "INFINITY";
     }
     else if (type == FloatFormat::nan) {
       if (format->extractSign(val))
-	token = "-NAN";
-      else
-	token = "NAN";
+	t << '-';
+      t << "NAN";
     }
     else {
-      ostringstream t;
-      if ((mods & force_scinote)!=0) {
+      if ((mods & force_scinote)!=0)
 	t.setf( ios::scientific ); // Set to scientific notation
-	t.precision(format->getDecimalPrecision()-1);
-	t << floatval;
-	token = t.str();
-      }
-      else {
-	// Try to print "minimal" accurate representation of the float
-	t.unsetf( ios::floatfield );	// Use "default" notation
-	t.precision(format->getDecimalPrecision());
-	t << floatval;
-	token = t.str();
-	bool looksLikeFloat = false;
-	for(int4 i=0;i<token.size();++i) {
-	  char c = token[i];
-	  if (c == '.' || c == 'e') {
-	    looksLikeFloat = true;
-	    break;
-	  }
-	}
-	if (!looksLikeFloat) {
-	  token += ".0";	// Force token to look like a floating-point value
-	}
-      }
+      else
+	t.setf( ios::fixed );	// Otherwise use fixed notation
+      t.precision(8);		// Number of digits of precision
+      t << floatval;
     }
   }
   if (vn==(const Varnode *)0)
-    pushAtom(Atom(token,syntax,EmitXml::const_color,op));
+    pushAtom(Atom(t.str(),syntax,EmitXml::const_color,op));
   else
-    pushAtom(Atom(token,vartoken,EmitXml::const_color,op,vn));
+    pushAtom(Atom(t.str(),vartoken,EmitXml::const_color,op,vn));
 }
 
 void PrintC::printUnicode(ostream &s,int4 onechar) const
@@ -1282,7 +1175,7 @@ void PrintC::printUnicode(ostream &s,int4 onechar) const
       s << "\\x" << setfill('0') << setw(8) << hex << onechar;
     return;
   }
-  StringManager::writeUtf8(s, onechar);		// emit normally
+  writeUtf8(s, onechar);		// emit normally
 }
 
 void PrintC::pushType(const Datatype *ct)
@@ -1322,6 +1215,32 @@ bool PrintC::doEmitWideCharPrefix(void) const
   return true;
 }
 
+/// \brief Check if the byte buffer has a (unicode) string terminator
+///
+/// \param buffer is the byte buffer
+/// \param size is the number of bytes in the buffer
+/// \param charsize is the presumed size (in bytes) of character elements
+/// \return \b true if a string terminator is found
+bool PrintC::hasCharTerminator(uint1 *buffer,int4 size,int4 charsize)
+
+{
+  for(int4 i=0;i<size;i+=charsize) {
+    bool isTerminator = true;
+    for(int4 j=0;j<charsize;++j) {
+      if (buffer[i+j] != 0) {	// Non-zero bytes means character can't be a null terminator
+	isTerminator = false;
+	break;
+      }
+    }
+    if (isTerminator) return true;
+  }
+  return false;
+}
+
+#define STR_LITERAL_BUFFER_MAXSIZE 2048
+#define STR_LITERAL_BUFFER_INCREMENT 32
+
+
 /// \brief Print a quoted (unicode) string at the given address.
 ///
 /// Data for the string is obtained directly from the LoadImage.  The bytes are checked
@@ -1329,69 +1248,43 @@ bool PrintC::doEmitWideCharPrefix(void) const
 /// pass, the string is emitted.
 /// \param s is the output stream to print to
 /// \param addr is the address of the string data within the LoadImage
-/// \param charType is the underlying character data-type
+/// \param charsize is the number of bytes in an encoded element (i.e. UTF8, UTF16, or UTF32)
 /// \return \b true if a proper string was found and printed to the stream
-bool PrintC::printCharacterConstant(ostream &s,const Address &addr,Datatype *charType) const
+bool PrintC::printCharacterConstant(ostream &s,const Address &addr,int4 charsize) const
 
 {
-  StringManager *manager = glb->stringManager;
-
-  // Retrieve UTF8 version of string
-  bool isTrunc = false;
-  const vector<uint1> &buffer(manager->getStringData(addr, charType, isTrunc));
-  if (buffer.empty())
+  uint1 buffer[STR_LITERAL_BUFFER_MAXSIZE+4]; // Additional buffer for get_codepoint skip readahead
+  int4 curBufferSize = 0;
+  bool foundTerminator = false;
+  try {
+    do {
+      uint4 newBufferSize = curBufferSize + STR_LITERAL_BUFFER_INCREMENT;
+      glb->loader->loadFill(buffer+curBufferSize,STR_LITERAL_BUFFER_INCREMENT,addr + curBufferSize);
+      foundTerminator = hasCharTerminator(buffer+curBufferSize,STR_LITERAL_BUFFER_INCREMENT,charsize);
+      curBufferSize = newBufferSize;
+    } while ((curBufferSize < STR_LITERAL_BUFFER_MAXSIZE)&&(!foundTerminator));
+  } catch(DataUnavailError &err) {
     return false;
-  if (doEmitWideCharPrefix() && charType->getSize() > 1 && !charType->isOpaqueString())
-    s << 'L';			// Print symbol indicating wide character
-  s << '"';
-  escapeCharacterData(s,buffer.data(),buffer.size(),1,glb->translate->isBigEndian());
-  if (isTrunc)
-    s << "...\" /* TRUNCATED STRING LITERAL */";
-  else
-    s << '"';
-
-  return true;
-}
-
-/// For the given CALL op, if a "this" pointer exists and needs to be hidden because
-/// of the print configuration, return the Varnode slot corresponding to the "this".
-/// Otherwise return -1.
-/// \param op is the given CALL PcodeOp
-/// \param fc is the function prototype corresponding to the CALL
-/// \return the "this" Varnode slot or -1
-int4 PrintC::getHiddenThisSlot(const PcodeOp *op,FuncProto *fc)
-
-{
-  int4 numInput = op->numInput();
-  if (isSet(hide_thisparam) && fc->hasThisPointer()) {
-    for(int4 i=1;i<numInput-1;++i) {
-      ProtoParameter *param = fc->getParam(i-1);
-      if (param != (ProtoParameter *)0 && param->isThisPointer())
-	return i;
-    }
-    if (numInput >= 2) {
-      ProtoParameter *param = fc->getParam(numInput-2);
-      if (param != (ProtoParameter *)0 && param->isThisPointer())
-	return numInput - 1;
-    }
   }
-  return -1;
-}
-
-void PrintC::resetDefaultsPrintC(void)
-
-{
-  option_convention = true;
-  option_hide_exts = true;
-  option_inplace_ops = false;
-  option_nocasts = false;
-  option_NULL = false;
-  option_unplaced = false;
-  option_space_after_comma = false;
-  option_newline_before_else = true;
-  option_newline_before_opening_brace = false;
-  option_newline_after_prototype = true;
-  setCStyleComments();
+  buffer[curBufferSize] = 0;		// Make sure bytes for final codepoint read are initialized
+  buffer[curBufferSize+1] = 0;
+  buffer[curBufferSize+2] = 0;
+  buffer[curBufferSize+3] = 0;
+  bool bigend = glb->translate->isBigEndian();
+  bool res;
+  if (isCharacterConstant(buffer,curBufferSize,charsize)) {
+    if (doEmitWideCharPrefix() && charsize > 1)
+      s << 'L';			// Print symbol indicating wide character
+    s << '"';
+    if (!escapeCharacterData(s,buffer,curBufferSize,charsize,bigend))
+      s << "...\" /* TRUNCATED STRING LITERAL */";
+    else s << '"';
+     
+    res = true;
+  }
+  else
+    res = false;
+  return res;
 }
 
 /// \brief Push a single character constant to the RPN stack
@@ -1479,7 +1372,7 @@ bool PrintC::pushPtrCharConstant(uintb val,const TypePointer *ct,const Varnode *
 
   ostringstream str;
   Datatype *subct = ct->getPtrTo();
-  if (!printCharacterConstant(str,stringaddr,subct))
+  if (!printCharacterConstant(str,stringaddr,subct->getSize()))
     return false;		// Can we get a nice ASCII string
 
   pushAtom(Atom(str.str(),vartoken,EmitXml::const_color,op,vn));
@@ -1683,7 +1576,7 @@ void PrintC::pushSymbol(const Symbol *sym,const Varnode *vn,const PcodeOp *op)
       SymbolEntry *entry = sym->getFirstWholeMap();
       if (entry != (SymbolEntry *)0) {
 	ostringstream s;
-	if (printCharacterConstant(s,entry->getAddr(),subct)) {
+	if (printCharacterConstant(s,entry->getAddr(),subct->getSize())) {
 	  pushAtom(Atom(s.str(),vartoken,EmitXml::const_color,op,vn));
 	  return;
 	}
@@ -1696,7 +1589,7 @@ void PrintC::pushSymbol(const Symbol *sym,const Varnode *vn,const PcodeOp *op)
     tokenColor = EmitXml::param_color;
   else
     tokenColor = EmitXml::var_color;
-  pushSymbolScope(sym);
+  // FIXME: resolve scopes
   if (sym->hasMergeProblems() && vn != (Varnode *)0) {
     HighVariable *high = vn->getHigh();
     if (high->isUnmerged()) {
@@ -1955,19 +1848,15 @@ void PrintC::emitPrototypeInputs(const FuncProto *proto)
   if (sz == 0)
     emit->print("void",EmitXml::keyword_color);
   else {
-    bool printComma = false;
     for(int4 i=0;i<sz;++i) {
-      if (printComma) {
+      if (i!=0) {
 		  emit->print(",");
 		  if (option_space_after_comma) {
 			  emit->spaces(1);
 		  }
       }
       ProtoParameter *param = proto->getParam(i);
-      if (isSet(hide_thisparam) && param->isThisPointer())
-	continue;
       Symbol *sym = param->getSymbol();
-      printComma = true;
       if (sym != (Symbol *)0)
 	emitVarDecl(sym);
       else {
@@ -2058,18 +1947,9 @@ void PrintC::emitGotoStatement(const FlowBlock *bl,const FlowBlock *exp_bl,
   emit->endStatement(id);
 }
 
-void PrintC::resetDefaults(void)
-
-{
-  PrintLanguage::resetDefaults();
-  resetDefaultsPrintC();
-}
-
 void PrintC::adjustTypeOperators(void)
 
 {
-  scope.print = "::";
-  shift_right.print = ">>";
   TypeOp::selectJavaOperators(glb->inst,false);
 }
 
@@ -2084,6 +1964,25 @@ void PrintC::setCommentStyle(const string &nm)
     setCPlusPlusStyleComments();
   else
     throw LowlevelError("Unknown comment style. Use \"c\" or \"cplusplus\"");
+}
+
+bool PrintC::isCharacterConstant(const uint1 *buf,int4 size,int4 charsize) const
+
+{
+  // Return true if this looks like a c-string
+  // If the string is encoded in UTF8 or ASCII, we get (on average) a bit of check
+  // per character.  For UTF16, the surrogate reserved area gives at least some check.
+  if (buf == (const uint1 *)0) return false;
+  bool bigend = glb->translate->isBigEndian();
+  int4 i=0;
+  int4 skip = charsize;
+  while(i<size) {
+    int4 codepoint = getCodepoint(buf+i,charsize,bigend,skip);
+    if (codepoint < 0) return false;
+    if (codepoint == 0) break;
+    i += skip;
+  }
+  return true;
 }
 
 /// \brief Emit the definition of the given data-type
@@ -2315,14 +2214,12 @@ void PrintC::emitFunctionDeclaration(const Funcdata *fd)
     }
   }
   int4 id1 = emit->openGroup();
-  emitSymbolScope(fd->getSymbol());
   emit->tagFuncName(fd->getName().c_str(),EmitXml::funcname_color,
 		    fd,(PcodeOp *)0);
 
   emit->spaces(function_call.spacing,function_call.bump);
   int4 id2 = emit->openParen('(');
   emit->spaces(0,function_call.bump);
-  pushScope(fd->getScopeLocal());		// Enter the function's scope for parameters
   emitPrototypeInputs(proto);
   emit->closeParen(')',id2);
   emit->closeGroup(id1);
@@ -2379,7 +2276,7 @@ void PrintC::docFunction(const Funcdata *fd)
     int4 id1 = emit->beginFunction(fd);
     emitCommentFuncHeader(fd);
     emit->tagLine();
-    emitFunctionDeclaration(fd);	// Causes us to enter function's scope
+    emitFunctionDeclaration(fd);
     emit->tagLine();
     if (option_newline_after_prototype) {
       emit->tagLine();
@@ -2391,7 +2288,6 @@ void PrintC::docFunction(const Funcdata *fd)
       emitBlockGraph(&fd->getBasicBlocks());
     else
       emitBlockGraph(&fd->getStructure());
-    popScope();				// Exit function's scope
     emit->stopIndent(id);
     emit->tagLine();
     emit->print("}");

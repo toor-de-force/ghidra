@@ -340,7 +340,7 @@ public class InstructionStub implements Instruction {
 	}
 
 	@Override
-	public List<Register> getRegisters() {
+	public Register[] getRegisters() {
 		throw new UnsupportedOperationException();
 	}
 

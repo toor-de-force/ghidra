@@ -20,7 +20,8 @@ import java.util.*;
 
 import ghidra.program.database.register.InMemoryRangeMapAdapter;
 import ghidra.program.model.address.*;
-import ghidra.program.model.lang.*;
+import ghidra.program.model.lang.Register;
+import ghidra.program.model.lang.RegisterValue;
 import ghidra.program.model.listing.ContextChangeException;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -33,8 +34,8 @@ abstract public class AbstractStoredProgramContext extends AbstractProgramContex
 
 	private Set<Register> registersWithValues; // cached set, recomputed whenever null
 
-	protected AbstractStoredProgramContext(Language language) {
-		super(language);
+	protected AbstractStoredProgramContext(Register[] registers) {
+		super(registers);
 		registerValueMap = new HashMap<>();
 		defaultRegisterValueMap = new HashMap<>();
 	}
@@ -205,7 +206,7 @@ abstract public class AbstractStoredProgramContext extends AbstractProgramContex
 	public Register[] getRegistersWithValues() {
 		if (registersWithValues == null) {
 			registersWithValues = new HashSet<>();
-			for (Register register : language.getRegisters()) {
+			for (Register register : registers) {
 				RegisterValueStore store = registerValueMap.get(register.getBaseRegister());
 				if (store != null && !store.isEmpty()) {
 					registersWithValues.add(register);

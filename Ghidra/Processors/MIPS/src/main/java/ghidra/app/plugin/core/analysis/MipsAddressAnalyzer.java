@@ -318,7 +318,7 @@ public class MipsAddressAnalyzer extends ConstantPropagationAnalyzer {
 									}
 								}
 								symEval.makeReference(context, lastSetInstr, -1,
-									instr.getMinAddress().getAddressSpace().getSpaceID(),
+									instr.getMinAddress().getAddressSpace().getBaseSpaceID(),
 									unsignedValue, 1, RefType.DATA, PcodeOp.UNIMPLEMENTED, true,
 									monitor);
 								if (localGPAssumptionValue == null) {

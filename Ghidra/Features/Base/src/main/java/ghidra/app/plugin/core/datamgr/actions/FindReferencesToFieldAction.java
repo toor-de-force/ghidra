@@ -92,7 +92,7 @@ public class FindReferencesToFieldAction extends DockingAction {
 		}
 
 		Composite composite = (Composite) dataTypeNode.getDataType();
-		DataTypeComponent[] components = composite.getDefinedComponents();
+		DataTypeComponent[] components = composite.getComponents();
 		List<String> names = new ArrayList<>();
 		for (DataTypeComponent dataTypeComponent : components) {
 			if (dataTypeComponent.isBitFieldComponent()) {

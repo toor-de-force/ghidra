@@ -23,8 +23,6 @@
 //
 //@category Search
 
-import java.util.*;
-
 import generic.jar.ResourceFile;
 import ghidra.app.decompiler.*;
 import ghidra.app.decompiler.component.DecompilerUtils;
@@ -44,6 +42,8 @@ import ghidra.util.SystemUtilities;
 import ghidra.util.UndefinedFunction;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
+
+import java.util.*;
 
 public class ShowConstantUse extends GhidraScript {
 	private DecompInterface decomplib;
@@ -113,8 +113,8 @@ public class ShowConstantUse extends GhidraScript {
 									for (int i = 0; i < clangStmt.numChildren(); i++) {
 										ClangNode child = clangStmt.Child(i);
 										if (child.equals(clangVar)) {
-											constLocs = backtrackParamToConstant(f, paramIndex,
-												tableDialog);
+											constLocs =
+												backtrackParamToConstant(f, paramIndex, tableDialog);
 											break;
 										}
 										if (child instanceof ClangVariableToken) {
@@ -137,16 +137,16 @@ public class ShowConstantUse extends GhidraScript {
 		tableDialog.setMessage("Finished!");
 	}
 
-	private Function getReferencedFunction(Address functionAddress) {
-		Function f = currentProgram.getFunctionManager().getFunctionAt(functionAddress);
+	private Function getReferencedFunction(Address faddr) {
+		Function f = currentProgram.getFunctionManager().getFunctionAt(faddr);
 		// couldn't find the function, see if there is an external ref there.
 		if (f == null) {
 			Reference[] referencesFrom =
-				currentProgram.getReferenceManager().getReferencesFrom(functionAddress);
-			for (Reference reference : referencesFrom) {
-				if (reference.isExternalReference()) {
-					functionAddress = reference.getToAddress();
-					f = currentProgram.getFunctionManager().getFunctionAt(functionAddress);
+				currentProgram.getReferenceManager().getReferencesFrom(faddr);
+			for (int i = 0; i < referencesFrom.length; i++) {
+				if (referencesFrom[i].isExternalReference()) {
+					faddr = referencesFrom[i].getToAddress();
+					f = currentProgram.getFunctionManager().getFunctionAt(faddr);
 					if (f != null) {
 						break;
 					}
@@ -254,8 +254,9 @@ public class ShowConstantUse extends GhidraScript {
 			@Override
 			public String getColumnValue(AddressableRowObject rowObject) {
 				ConstUseLocation entry = (ConstUseLocation) rowObject;
-				Function func = entry.getProgram().getFunctionManager().getFunctionContaining(
-					entry.getAddress());
+				Function func =
+					entry.getProgram().getFunctionManager().getFunctionContaining(
+						entry.getAddress());
 				if (func == null) {
 					return "";
 				}
@@ -335,15 +336,20 @@ public class ShowConstantUse extends GhidraScript {
 			}
 
 			public void runScript(String name, Program prog, Address loc) {
-				GhidraState scriptState = new GhidraState(state.getTool(), state.getProject(), prog,
-					new ProgramLocation(prog, loc), null, null);
+				GhidraState scriptState =
+					new GhidraState(state.getTool(), state.getProject(), prog, new ProgramLocation(
+						prog, loc), null, null);
 				try {
-					ResourceFile scriptSource = GhidraScriptUtil.findScriptByName(name);
-					if (scriptSource != null) {
-						GhidraScriptProvider provider = GhidraScriptUtil.getProvider(scriptSource);
-						GhidraScript script = provider.getScriptInstance(scriptSource, writer);
-						script.execute(scriptState, monitor, writer);
-						return;
+					List<ResourceFile> dirs = GhidraScriptUtil.getScriptSourceDirectories();
+					for (ResourceFile dir : dirs) {
+						ResourceFile scriptSource = new ResourceFile(dir, name);
+						if (scriptSource.exists()) {
+							GhidraScriptProvider provider =
+								GhidraScriptUtil.getProvider(scriptSource);
+							GhidraScript script = provider.getScriptInstance(scriptSource, writer);
+							script.execute(scriptState, monitor, writer);
+							return;
+						}
 					}
 				}
 				catch (Exception exc) {
@@ -431,7 +437,8 @@ public class ShowConstantUse extends GhidraScript {
 		keys = constLocs.keySet();
 		Address[] keyArray = keys.toArray(new Address[0]);
 		Arrays.sort(keyArray);
-		for (Address loc : keyArray) {
+		for (int i = 0; i < keyArray.length; i++) {
+			Address loc = keyArray[i];
 			Long constant = constLocs.get(loc);
 			tableChooserDialog.add(new ConstUseLocation(currentProgram, loc, constant, null));
 		}
@@ -609,8 +616,7 @@ public class ShowConstantUse extends GhidraScript {
 		Varnode pvnode = null;
 		Parameter parm = f.getParameter(paramIndex);
 		if (parm == null) {
-			this.popup(
-				"Please put the cursor on a function parameter variable\nIf the function has not had it's parameters identified\nplease do so and try again");
+			this.popup("Please put the cursor on a function parameter variable\nIf the function has not had it's parameters identified\nplease do so and try again");
 			return constUse;
 		}
 
@@ -667,8 +673,9 @@ public class ShowConstantUse extends GhidraScript {
 
 				if (refFunc == null) {
 					localConstUse.put(refAddr, null);
-					String problem = "*** No function at " + refAddr +
-						".\nCould not analyze constant use past this undefined function!";
+					String problem =
+						"*** No function at " + refAddr +
+							".\nCould not analyze constant use past this undefined function!";
 					addConstantProblem(tableChooserDialog, refAddr, problem);
 					refFunc = UndefinedFunction.findFunction(currentProgram, refAddr, monitor);
 				}
@@ -730,10 +737,11 @@ public class ShowConstantUse extends GhidraScript {
 																	// call dest
 				if (parm == null) {
 					constUse.put(instr.getAddress(), null);
-					String problem = "  *** Warning, it appears that function '" +
-						funcVarUse.getName() + "' at " + funcVarUse.getAddress() +
-						" does not have it's parameters recovered!\n" +
-						"        Use Commit Params/Return in the decompiler on this function.";
+					String problem =
+						"  *** Warning, it appears that function '" + funcVarUse.getName() +
+							"' at " + funcVarUse.getAddress() +
+							" does not have it's parameters recovered!\n" +
+							"        Use Commit Params/Return in the decompiler on this function.";
 					addErrorNote(instr.getAddress(), problem);
 					break;
 				}
@@ -798,8 +806,7 @@ public class ShowConstantUse extends GhidraScript {
 						value = value & pcodeOp.getInput(1).getOffset();
 					}
 					else {
-						throw new InvalidInputException(
-							" Unhandled Pcode OP " + pcodeOp.toString());
+						throw new InvalidInputException(" Unhandled Pcode OP " + pcodeOp.toString());
 					}
 					break;
 				default:
@@ -849,8 +856,7 @@ public class ShowConstantUse extends GhidraScript {
 					long value = def.getInput(0).getOffset();
 					try {
 						value = applyDefUseList(value, defUseList);
-						constUse.put(remapAddress(funcEntry, def.getOutput().getPCAddress()),
-							value);
+						constUse.put(remapAddress(funcEntry, def.getOutput().getPCAddress()), value);
 						println("   " + function.getName() + "    " +
 							def.getOutput().getPCAddress() + " : 0x" + Long.toHexString(value));
 					}
@@ -866,7 +872,7 @@ public class ShowConstantUse extends GhidraScript {
 				if (def.getInput(0).isConstant() && def.getInput(1).isConstant()) {
 					long space = def.getInput(0).getOffset();
 					long offset = def.getInput(1).getOffset();
-					if (space != funcEntry.getAddressSpace().getSpaceID()) {
+					if (space != funcEntry.getAddressSpace().getBaseSpaceID()) {
 						break;
 					}
 					try {
@@ -949,7 +955,7 @@ public class ShowConstantUse extends GhidraScript {
 				break;
 
 			case PcodeOp.PTRSUB: // Pointer + some sub element access (usually a
-								// structure ref)
+									// structure ref)
 				Varnode offsetVal = def.getInput(1);
 				if (!offsetVal.isConstant()) {
 					break;
@@ -960,8 +966,7 @@ public class ShowConstantUse extends GhidraScript {
 					long value = baseVal.getOffset() + offsetVal.getOffset();
 					try {
 						value = applyDefUseList(value, defUseList);
-						constUse.put(remapAddress(funcEntry, def.getOutput().getPCAddress()),
-							value);
+						constUse.put(remapAddress(funcEntry, def.getOutput().getPCAddress()), value);
 						println("   " + function.getName() + "    " +
 							def.getOutput().getPCAddress() + " : 0x" + Long.toHexString(value));
 					}
@@ -993,9 +998,8 @@ public class ShowConstantUse extends GhidraScript {
 		// println("     Lost IT! " + vnode.getPCAddress());
 	}
 
-	private void followThroughGlobal(HashMap<Address, Long> constUse, ArrayList<PcodeOp> defUseList,
-			HighVariable hvar,
-			ArrayList<FunctionParamUse> funcList,
+	private void followThroughGlobal(HashMap<Address, Long> constUse,
+			ArrayList<PcodeOp> defUseList, HighVariable hvar, ArrayList<FunctionParamUse> funcList,
 			HashSet<SequenceNumber> doneSet) {
 		Address loc = hvar.getRepresentative().getAddress();
 		PcodeOp def = hvar.getRepresentative().getDef();
@@ -1065,8 +1069,9 @@ public class ShowConstantUse extends GhidraScript {
 		// don't decompile the function again if it was the same as the last one
 		//
 		if (!f.getEntryPoint().equals(lastDecompiledFuncAddr)) {
-			lastResults = decompInterface.decompileFunction(f,
-				decompInterface.getOptions().getDefaultTimeout(), monitor);
+			lastResults =
+				decompInterface.decompileFunction(f,
+					decompInterface.getOptions().getDefaultTimeout(), monitor);
 		}
 
 		hfunction = lastResults.getHighFunction();

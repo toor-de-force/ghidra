@@ -17,35 +17,34 @@ package ghidra.framework.main.projectdata.actions;
 
 import javax.swing.tree.TreePath;
 
-import docking.action.ContextSpecificAction;
 import docking.action.MenuData;
 import docking.widgets.tree.GTreeNode;
-import ghidra.framework.main.datatable.ProjectTreeContext;
+import ghidra.framework.main.datatable.ProjectDataTreeContextAction;
 import ghidra.framework.main.datatree.DataTree;
+import ghidra.framework.main.datatree.ProjectDataTreeActionContext;
 
-public class ProjectDataExpandAction<T extends ProjectTreeContext>
-		extends ContextSpecificAction<T> {
+public class ProjectDataExpandAction extends ProjectDataTreeContextAction {
 
-	public ProjectDataExpandAction(String owner, String group, Class<T> contextClass) {
-		super("Expand All", owner, contextClass);
+	public ProjectDataExpandAction(String owner, String group) {
+		super("Expand All", owner);
 		setPopupMenuData(new MenuData(new String[] { "Expand All" }, group));
 		markHelpUnnecessary();
 	}
 
 	@Override
-	protected void actionPerformed(T context) {
+	protected void actionPerformed(ProjectDataTreeActionContext context) {
 		DataTree tree = context.getTree();
 		TreePath[] paths = context.getSelectionPaths();
 		expand(tree, paths[0]);
 	}
 
 	@Override
-	public boolean isAddToPopup(T context) {
+	public boolean isAddToPopup(ProjectDataTreeActionContext context) {
 		return context.getFolderCount() == 1 && context.getFileCount() == 0;
 	}
 
 	@Override
-	protected boolean isEnabledForContext(T context) {
+	protected boolean isEnabledForContext(ProjectDataTreeActionContext context) {
 		return context.getFolderCount() == 1 && context.getFileCount() == 0;
 	}
 

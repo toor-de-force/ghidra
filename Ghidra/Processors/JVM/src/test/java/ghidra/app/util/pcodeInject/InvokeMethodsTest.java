@@ -21,29 +21,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
 import org.junit.Test;
 
-import ghidra.app.plugin.processors.sleigh.SleighLanguage;
 import ghidra.javaclass.format.DescriptorDecoder;
 import ghidra.javaclass.format.constantpool.AbstractConstantPoolInfoJava;
-import ghidra.program.model.address.Address;
-import ghidra.program.model.lang.LanguageID;
-import ghidra.test.AbstractGhidraHeadlessIntegrationTest;
 
-public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
-
-	private SleighLanguage language;
-	private Address opAddress;
-	private long uniqueBase;
-
-	@Before
-	public void setUp() throws Exception {
-		language =
-			(SleighLanguage) getLanguageService().getLanguage(new LanguageID("JVM:BE:32:default"));
-		opAddress = language.getAddressFactory().getDefaultAddressSpace().getAddress(0x10000);
-		uniqueBase = language.getUniqueBase();
-	}
+public class InvokeMethodsTest {
 
 	@Test
 	public void testEmitPcodeToResolveMethodReferenceInvokeDynamic() throws IOException {
@@ -60,14 +43,15 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		byte[] classFileBytes = TestClassFileCreator.getByteArray(classFile);
 		AbstractConstantPoolInfoJava[] constantPool =
 			TestClassFileCreator.getConstantPoolFromBytes(classFileBytes);
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
+		StringBuilder pCode = new StringBuilder();
 		InvokeMethods.emitPcodeToResolveMethodReference(pCode, 1, constantPool,
 			JavaInvocationType.INVOKE_DYNAMIC);
 
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		expected.emitAssignRegisterFromPcodeOpCall(InvokeMethods.CALL_TARGET,
+		StringBuilder expected = new StringBuilder();
+		PcodeTextEmitter.emitAssignRegisterFromPcodeOpCall(expected, InvokeMethods.CALL_TARGET,
 			ConstantPoolJava.CPOOL_OP, "0", "1", ConstantPoolJava.CPOOL_INVOKEDYNAMIC);
-		assertEquals("incorrect pcode for dynamic invocation", expected, pCode);
+		assertEquals("incorrect pcode for dynamic invocation", expected.toString(),
+			pCode.toString());
 	}
 
 	@Test
@@ -86,17 +70,16 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		byte[] classFileBytes = TestClassFileCreator.getByteArray(classFile);
 		AbstractConstantPoolInfoJava[] constantPool =
 			TestClassFileCreator.getConstantPoolFromBytes(classFileBytes);
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		pCode.defineTemp(InvokeMethods.THIS, 4);
+		StringBuilder pCode = new StringBuilder();
 		InvokeMethods.emitPcodeToResolveMethodReference(pCode, 1, constantPool,
 			JavaInvocationType.INVOKE_INTERFACE);
 
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		expected.defineTemp(InvokeMethods.THIS, 4);
-		expected.emitAssignRegisterFromPcodeOpCall(InvokeMethods.CALL_TARGET,
+		StringBuilder expected = new StringBuilder();
+		PcodeTextEmitter.emitAssignRegisterFromPcodeOpCall(expected, InvokeMethods.CALL_TARGET,
 			ConstantPoolJava.CPOOL_OP, InvokeMethods.THIS, "1",
 			ConstantPoolJava.CPOOL_INVOKEINTERFACE);
-		assertEquals("incorrect pcode for interface method invocation", expected, pCode);
+		assertEquals("incorrect pcode for interface method invocation", expected.toString(),
+			pCode.toString());
 	}
 
 	@Test
@@ -115,17 +98,16 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		byte[] classFileBytes = TestClassFileCreator.getByteArray(classFile);
 		AbstractConstantPoolInfoJava[] constantPool =
 			TestClassFileCreator.getConstantPoolFromBytes(classFileBytes);
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		pCode.defineTemp(InvokeMethods.THIS, 4);
+		StringBuilder pCode = new StringBuilder();
 		InvokeMethods.emitPcodeToResolveMethodReference(pCode, 1, constantPool,
 			JavaInvocationType.INVOKE_SPECIAL);
 
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		expected.defineTemp(InvokeMethods.THIS, 4);
-		expected.emitAssignRegisterFromPcodeOpCall(InvokeMethods.CALL_TARGET,
+		StringBuilder expected = new StringBuilder();
+		PcodeTextEmitter.emitAssignRegisterFromPcodeOpCall(expected, InvokeMethods.CALL_TARGET,
 			ConstantPoolJava.CPOOL_OP, InvokeMethods.THIS, "1",
 			ConstantPoolJava.CPOOL_INVOKESPECIAL);
-		assertEquals("incorrect pcode for special method invocation", expected, pCode);
+		assertEquals("incorrect pcode for special method invocation", expected.toString(),
+			pCode.toString());
 	}
 
 	@Test
@@ -144,14 +126,15 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		byte[] classFileBytes = TestClassFileCreator.getByteArray(classFile);
 		AbstractConstantPoolInfoJava[] constantPool =
 			TestClassFileCreator.getConstantPoolFromBytes(classFileBytes);
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
+		StringBuilder pCode = new StringBuilder();
 		InvokeMethods.emitPcodeToResolveMethodReference(pCode, 1, constantPool,
 			JavaInvocationType.INVOKE_STATIC);
 
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		expected.emitAssignRegisterFromPcodeOpCall(InvokeMethods.CALL_TARGET,
+		StringBuilder expected = new StringBuilder();
+		PcodeTextEmitter.emitAssignRegisterFromPcodeOpCall(expected, InvokeMethods.CALL_TARGET,
 			ConstantPoolJava.CPOOL_OP, "0", "1", ConstantPoolJava.CPOOL_INVOKESTATIC);
-		assertEquals("incorrect pcode for static method invocation", expected, pCode);
+		assertEquals("incorrect pcode for static method invocation", expected.toString(),
+			pCode.toString());
 	}
 
 	@Test
@@ -170,25 +153,25 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		byte[] classFileBytes = TestClassFileCreator.getByteArray(classFile);
 		AbstractConstantPoolInfoJava[] constantPool =
 			TestClassFileCreator.getConstantPoolFromBytes(classFileBytes);
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		pCode.defineTemp(InvokeMethods.THIS, 4);
+		StringBuilder pCode = new StringBuilder();
 		InvokeMethods.emitPcodeToResolveMethodReference(pCode, 1, constantPool,
 			JavaInvocationType.INVOKE_VIRTUAL);
 
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		expected.defineTemp(InvokeMethods.THIS, 4);
-		expected.emitAssignRegisterFromPcodeOpCall(InvokeMethods.CALL_TARGET,
+		StringBuilder expected = new StringBuilder();
+		PcodeTextEmitter.emitAssignRegisterFromPcodeOpCall(expected, InvokeMethods.CALL_TARGET,
 			ConstantPoolJava.CPOOL_OP, InvokeMethods.THIS, "1",
 			ConstantPoolJava.CPOOL_INVOKEVIRTUAL);
-		assertEquals("incorrect pcode for static method invocation", expected, pCode);
+		assertEquals("incorrect pcode for static method invocation", expected.toString(),
+			pCode.toString());
 	}
 
 	@Test
 	public void testEmitPcodeToReverseStackNoParamsNoThis() {
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
+		StringBuilder pCode = new StringBuilder();
 		//InvokeMethods.emitPcodeToReverseStack(pCode, new ArrayList<JavaComputationalCategory>(), false);
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		assertEquals("incorrect pcode reversing stack: no params no this", expected, pCode);
+		StringBuilder expected = new StringBuilder();
+		assertEquals("incorrect pcode reversing stack: no params no this", expected.toString(),
+			pCode.toString());
 	}
 
 	//test bad category
@@ -207,10 +190,10 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		byte[] classFileBytes = TestClassFileCreator.getByteArray(classFile);
 		AbstractConstantPoolInfoJava[] constantPool =
 			TestClassFileCreator.getConstantPoolFromBytes(classFileBytes);
-		PcodeOpEmitter pCode = new PcodeOpEmitter(language, opAddress, uniqueBase);
-		InvokeMethods.getPcodeForInvoke(pCode, 1, constantPool, JavaInvocationType.INVOKE_DYNAMIC);
+		String pCode =
+			InvokeMethods.getPcodeForInvoke(1, constantPool, JavaInvocationType.INVOKE_DYNAMIC);
 
-		PcodeOpEmitter expected = new PcodeOpEmitter(language, opAddress, uniqueBase);
+		StringBuilder expected = new StringBuilder();
 		String descriptor = DescriptorDecoder.getDescriptorForInvoke(1, constantPool,
 			JavaInvocationType.INVOKE_DYNAMIC);
 		List<JavaComputationalCategory> categories =
@@ -219,10 +202,11 @@ public class InvokeMethodsTest extends AbstractGhidraHeadlessIntegrationTest {
 		InvokeMethods.emitPcodeToMoveParams(expected, categories, false, 24);
 		InvokeMethods.emitPcodeToResolveMethodReference(expected, 1, constantPool,
 			JavaInvocationType.INVOKE_DYNAMIC);
-		expected.emitIndirectCall(InvokeMethods.CALL_TARGET);
-		expected.emitPushCat1Value(InvokeMethods.CAT_1_RETURN);
+		PcodeTextEmitter.emitIndirectCall(expected, InvokeMethods.CALL_TARGET);
+		PcodeTextEmitter.emitPushCat1Value(expected, InvokeMethods.CAT_1_RETURN);
 
-		assertEquals("incorrect pcode for invoke dynamic: (JJII)I", expected, pCode);
+		assertEquals("incorrect pcode for invoke dynamic: (JJII)I", expected.toString(), pCode);
+
 	}
 
 }

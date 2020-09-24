@@ -18,12 +18,11 @@ package ghidra.program.model.lang;
 import java.util.*;
 
 import ghidra.program.model.address.Address;
-import ghidra.util.Msg;
 
 public class RegisterBuilder {
 
 	ArrayList<Register> registerList;
-	Map<String, Register> registerMap; // include aliases and case-variations
+	HashMap<String, Register> registerMap;
 	Address contextAddress;
 
 	public RegisterBuilder() {
@@ -45,19 +44,14 @@ public class RegisterBuilder {
 	}
 
 	public void addRegister(Register register) {
-		String name = register.getName();
-		if (registerMap.get(name) != null) {
-			Msg.error(this, "Duplicate register name: " + name);
-			// TODO: should we throw exception - hopefully sleigh will prevent this condition
-		}
-		// Use of register alias handles case where context field is defined with different names
+		Register aliasedReg = null;
 		for (Register reg : registerList) {
 			if (reg.getAddress().equals(register.getAddress()) &&
 				reg.getLeastSignificantBit() == register.getLeastSignificantBit() &&
 				reg.getBitLength() == register.getBitLength()) {
 				// define as register alias
-				reg.addAlias(name);
-				addRegisterToNameMap(name, reg);
+				reg.addAlias(register.getName());
+				registerMap.put(register.getName(), reg);
 				return;
 			}
 		}
@@ -65,19 +59,7 @@ public class RegisterBuilder {
 			contextAddress = register.getAddress();
 		}
 		registerList.add(register);
-		addRegisterToNameMap(name, register);
-	}
-
-	private void addRegisterToNameMap(String name, Register register) {
-		registerMap.put(name, register);
-		registerMap.put(name.toLowerCase(), register);
-		registerMap.put(name.toUpperCase(), register);
-	}
-
-	private void removeRegisterFromNameMap(String name) {
-		registerMap.remove(name);
-		registerMap.remove(name.toLowerCase());
-		registerMap.remove(name.toUpperCase());
+		registerMap.put(register.getName(), register);
 	}
 
 	/**
@@ -89,15 +71,31 @@ public class RegisterBuilder {
 		return contextAddress;
 	}
 
-	/**
-	 * Compute current register collection and instantiate a {@link RegisterManager}
-	 * @return new register manager instance
-	 */
-	public RegisterManager getRegisterManager() {
-		return new RegisterManager(computeRegisters(), registerMap);
+	public void removeRegister(String name) {
+		Register register = registerMap.remove(name);
+		if (register != null) {
+			if (name.equals(register.getName())) {
+				// name is primary - check for alias
+				Iterator<String> iter = register.getAliases().iterator();
+				if (!iter.hasNext()) {
+					// no alias - remove register
+					registerList.remove(register);
+				}
+				else {
+					register.rename(iter.next());
+				}
+			}
+			else {
+				register.removeAlias(name);
+			}
+		}
 	}
 
-	private List<Register> computeRegisters() {
+	public RegisterManager getRegisterManager() {
+		return new RegisterManager(computeRegisters());
+	}
+
+	private Register[] computeRegisters() {
 		List<Register> regList = new LinkedList<>();
 		List<Register> unprocessed = new LinkedList<>(registerList);
 
@@ -119,7 +117,8 @@ public class RegisterBuilder {
 			}
 			bitSize = nextLargerSize;
 		}
-		return registerList;
+
+		return registerList.toArray(new Register[registerList.size()]);
 	}
 
 	private Register[] getChildren(Register parent, List<Register> regList) {
@@ -160,7 +159,6 @@ public class RegisterBuilder {
 	/**
 	 * Returns the register with the given name;
 	 * @param name the name of the register to retrieve
-	 * @return register or null if not found
 	 */
 	public Register getRegister(String name) {
 		return registerMap.get(name);
@@ -182,8 +180,8 @@ public class RegisterBuilder {
 			return false;
 		}
 		register.rename(newName);
-		removeRegisterFromNameMap(oldName);
-		addRegisterToNameMap(newName, register);
+		registerMap.remove(oldName);
+		registerMap.put(newName, register);
 		return true;
 	}
 

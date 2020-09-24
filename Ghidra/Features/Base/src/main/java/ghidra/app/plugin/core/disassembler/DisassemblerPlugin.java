@@ -301,11 +301,25 @@ public class DisassemblerPlugin extends Plugin {
 		return currentProgram.getMemory().contains(address);
 	}
 
+	/**
+	 * @see ghidra.app.plugin.contrib.disassembler.DisassemblyTaskListener#disassembleMessageReported(String)
+	 */
+	public void disassembleMessageReported(String msg) {
+		tool.setStatusInfo(msg);
+	}
+
+	/**
+	 * @see ghidra.app.plugin.contrib.disassembler.DisassemblyTaskListener#disassemblyDone(DisassemblyTask)
+	 */
+	public void disassemblyDone(Disassembler task) {
+	}
+
 	public void setDefaultContext(ListingActionContext context) {
 
 		Program contextProgram = context.getProgram();
-		Register baseContextReg = contextProgram.getLanguage().getContextBaseRegister();
-		if (baseContextReg != null && baseContextReg.hasChildren()) {
+		ProgramContext programContext = contextProgram.getProgramContext();
+		Register[] registers = programContext.getProcessorStateRegisters();
+		if (registers.length == 0) {
 			return;
 		}
 
@@ -314,8 +328,8 @@ public class DisassemblerPlugin extends Plugin {
 	}
 
 	public boolean hasContextRegisters(Program currentProgram) {
-		Register baseContextReg = currentProgram.getLanguage().getContextBaseRegister();
-		return baseContextReg != null && baseContextReg.hasChildren();
+		Register[] registers = currentProgram.getProgramContext().getProcessorStateRegisters();
+		return registers.length > 0;
 	}
 
 	public void disassembleArmCallback(ListingActionContext context, boolean thumbMode) {

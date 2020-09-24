@@ -30,14 +30,13 @@ public class DirData {
 	private Integer size;
 
 	public static List<DirData> loadTestData(String file) throws IOException {
-		try (InputStream is = ResourceManager.getResourceAsStream(file)) {
-			List<String> lines = FileUtilities.getLines(is);
-			List<DirData> data = new ArrayList<>();
-			for (String line : lines) {
-				data.add(new DirData(line));
-			}
-			return data;
+		InputStream is = ResourceManager.getResourceAsStream(file);
+		List<String> lines = FileUtilities.getLines(is);
+		List<DirData> data = new ArrayList<>();
+		for (String line : lines) {
+			data.add(new DirData(line));
 		}
+		return data;
 	}
 
 	public String getDate() {

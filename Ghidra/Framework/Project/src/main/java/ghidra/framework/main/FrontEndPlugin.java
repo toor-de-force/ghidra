@@ -209,27 +209,34 @@ public class FrontEndPlugin extends Plugin
 
 	private void createActions() {
 		String owner = getName();
-
 		String groupName = "Cut/copy/paste/new1";
-		newFolderAction = new FrontEndProjectDataNewFolderAction(owner, groupName);
 
+		newFolderAction = new ProjectDataNewFolderAction(owner, groupName);
 		groupName = "Cut/copy/paste/new2";
+
 		cutAction = new ProjectDataCutAction(owner, groupName);
+
 		clearCutAction = new ClearCutAction(owner);
+
 		copyAction = new ProjectDataCopyAction(owner, groupName);
+
 		pasteAction = new ProjectDataPasteAction(owner, groupName);
 
 		groupName = "Delete/Rename";
 		renameAction = new ProjectDataRenameAction(owner, groupName);
+
 		deleteAction = new ProjectDataDeleteAction(owner, groupName);
+
 		openAction = new ProjectDataOpenDefaultToolAction(owner, "Open");
 
 		groupName = "Expand/Collapse";
-		expandAction = new FrontEndProjectDataExpandAction(owner, groupName);
-		collapseAction = new FrontEndProjectDataCollapseAction(owner, groupName);
+		expandAction = new ProjectDataExpandAction(owner, groupName);
+
+		collapseAction = new ProjectDataCollapseAction(owner, groupName);
 
 		groupName = "Select/Toggle";
 		selectAction = new ProjectDataSelectAction(owner, groupName);
+
 		readOnlyAction = new ProjectDataReadOnlyAction(owner, groupName);
 
 		groupName = "XRefresh";
@@ -975,14 +982,14 @@ public class FrontEndPlugin extends Plugin
 			@Override
 			public void actionPerformed(ActionContext context) {
 				ToolButton tb = (ToolButton) context.getContextObject();
-				PluginTool pluginTool = tb.getRunningTool();
+				PluginTool pluginTool = (PluginTool) tb.getRunningTool();
 				pluginTool.showConfig(true, false);
 			}
 
 			@Override
 			boolean isEnabledForContext(ToolButton toolButton) {
 				if (toolButton.isRunningTool()) {
-					PluginTool pluginTool = toolButton.getRunningTool();
+					PluginTool pluginTool = (PluginTool) toolButton.getRunningTool();
 					return pluginTool.isConfigurable();
 				}
 				return false;

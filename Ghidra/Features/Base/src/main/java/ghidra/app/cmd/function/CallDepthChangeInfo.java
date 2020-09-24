@@ -31,6 +31,7 @@ import ghidra.program.util.SymbolicPropogator.Value;
 import ghidra.util.Msg;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
+import ghidra.util.task.TaskMonitorAdapter;
 
 /**
  * CallDepthChangeInfo.java
@@ -88,7 +89,7 @@ public class CallDepthChangeInfo {
 		this.program = func.getProgram();
 		frameReg = program.getCompilerSpec().getStackPointer();
 		try {
-			initialize(func, func.getBody(), frameReg, TaskMonitor.DUMMY);
+			initialize(func, func.getBody(), frameReg, TaskMonitorAdapter.DUMMY_MONITOR);
 		}
 		catch (CancelledException e) {
 			throw new RuntimeException("Unexpected Exception", e);
@@ -531,7 +532,7 @@ public class CallDepthChangeInfo {
 		st.push(func.getEntryPoint());
 		st.push(new Integer(0));
 		st.push(Boolean.TRUE);
-		ProcessorContextImpl procContext = new ProcessorContextImpl(program.getLanguage());
+		ProcessorContextImpl procContext = new ProcessorContextImpl(trans.getRegisters());
 
 		AddressSet undone = new AddressSet(func.getBody());
 		AddressSet badStackSet = new AddressSet(undone);
@@ -902,9 +903,9 @@ public class CallDepthChangeInfo {
 
 		Stack<Object> st = new Stack<Object>();
 		st.push(func.getEntryPoint());
-		st.push(Integer.valueOf(0));
+		st.push(new Integer(0));
 		st.push(Boolean.TRUE);
-		ProcessorContextImpl procContext = new ProcessorContextImpl(program.getLanguage());
+		ProcessorContextImpl procContext = new ProcessorContextImpl(trans.getRegisters());
 
 		AddressSet undone = new AddressSet(func.getBody());
 		AddressSet badStackSet = new AddressSet(undone);
@@ -954,7 +955,7 @@ public class CallDepthChangeInfo {
 				Address[] flows = instr.getFlows();
 				for (Address flow2 : flows) {
 					st.push(flow2);
-					st.push(Integer.valueOf(stackPointerDepth));
+					st.push(new Integer(stackPointerDepth));
 					st.push(stackOK);
 				}
 			}

@@ -15,9 +15,10 @@
  */
 package ghidra.util.datastruct;
 
+
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.*;
+import java.util.LinkedList;
 
 /**
  * <code>ObjectClass</code> provides a fixed-size long-key-based object cache.
@@ -29,23 +30,23 @@ import java.util.*;
  * an object in the weak cache.
  */
 public class ObjectCache {
-
-	private Map<Long, KeyedSoftReference<?>> hashTable;
+	
+	private LongObjectHashtable<Object> hashTable;
 	private ReferenceQueue<Object> refQueue;
 	private LinkedList<Object> hardCache;
 	private int hardCacheSize;
-
+	
 	/**
 	 * Construct a keyed-object cache of size hardCacheSize.
 	 * @param hardCacheSize hard cache size.
 	 */
 	public ObjectCache(int hardCacheSize) {
 		this.hardCacheSize = hardCacheSize;
-		hashTable = new HashMap<>();
+		hashTable = new LongObjectHashtable<>();
 		refQueue = new ReferenceQueue<Object>();
 		hardCache = new LinkedList<Object>();
 	}
-
+	
 	/**
 	 * Determine if the keyed-object exists in the cache.
 	 * @param key object key
@@ -53,35 +54,34 @@ public class ObjectCache {
 	 */
 	public synchronized boolean contains(long key) {
 		processQueue();
-		return hashTable.containsKey(key);
+		return hashTable.contains(key);
 	}
-
+	
 	/**
 	 * Get the object from cache which corresponds to the specified key.
 	 * @param key object key
 	 * @return cached object
 	 */
 	public synchronized Object get(long key) {
-		WeakReference<?> ref = hashTable.get(key);
+		WeakReference<?> ref = (WeakReference<?>)hashTable.get(key);
 		if (ref != null) {
 			Object obj = ref.get();
 			if (obj == null) {
 				hashTable.remove(key);
 			}
 			addToHardCache(obj);
-			return obj;
+			return obj; 
 		}
 		return null;
 	}
-
+	
 	/**
 	 * Return the hard cache size
-	 * @return the hard cache size
 	 */
 	public int size() {
 		return hardCacheSize;
 	}
-
+	
 	/**
 	 * Adjust the hard cache size
 	 * @param size new hard cache size
@@ -92,7 +92,7 @@ public class ObjectCache {
 		}
 		this.hardCacheSize = size;
 	}
-
+	
 	/**
 	 * Add an object to the cache
 	 * @param key object key
@@ -106,19 +106,57 @@ public class ObjectCache {
 	}
 
 	/**
+	 * Clear both hard and weak caches.
+	 * The cache should be cleared when all cached objects have become invalid.
+	 */
+	public synchronized void clear() {
+		processQueue();
+		long[] keys = hashTable.getKeys();
+		for ( long element : keys ) {
+			KeyedSoftReference<?> ref = (KeyedSoftReference<?>)hashTable.get(element);
+			ref.clear();
+		}
+		
+		hashTable.removeAll();
+		refQueue = new ReferenceQueue<Object>();
+	}
+	
+	/**
+	 * Remove the specified range of keyed objects from both hard and weak caches.
+	 * A cache range should be cleared when the corresponding objects have become invalid.
+	 * @param startKey minimum object key value
+	 * @param endKey maximum object key value
+	 */
+	public synchronized void remove(long startKey, long endKey) {
+		if ((endKey>>1)-(startKey>>1) < (hashTable.size()>>1)) {
+			for(long i=startKey;i<=endKey;i++) {
+				remove(i);
+			}
+		}
+		else {
+			long[] keys = hashTable.getKeys();
+			for ( long element : keys ) {
+				if (element >= startKey && element <= endKey) {
+					remove(element);
+				}
+			}		
+		}
+	}
+	
+	/**
 	 * Remove the specified keyed object from both hard and weak caches.
 	 * An object should be removed from the cache when it becomes invalid.
 	 * @param key object key
 	 */
 	public synchronized void remove(long key) {
 		processQueue();
-		KeyedSoftReference<?> ref = hashTable.get(key);
+		KeyedSoftReference<?> ref = (KeyedSoftReference<?>)hashTable.get(key);
 		if (ref != null) {
 			ref.clear();
 			hashTable.remove(key);
 		}
 	}
-
+	
 	/**
 	 * Add the specified object to the hard cache.
 	 * @param obj object
@@ -129,23 +167,23 @@ public class ObjectCache {
 			hardCache.removeFirst();
 		}
 	}
-
+	
 	/**
 	 * Cleanup weak cache
 	 */
 	private void processQueue() {
 		KeyedSoftReference<?> ref;
-		while ((ref = (KeyedSoftReference<?>) refQueue.poll()) != null) {
-			hashTable.remove(ref.getKey());
+		while((ref = (KeyedSoftReference<?>)refQueue.poll()) != null) {
+			hashTable.remove(ref.getKey());	
 		}
 	}
-
+	
 	/**
 	 * Provides a weak wrapper for a keyed-object
 	 */
 	private class KeyedSoftReference<T> extends WeakReference<T> {
 		private long key;
-
+		
 		/**
 		 * Construct a keyed-object reference
 		 * @param key object key
@@ -156,14 +194,13 @@ public class ObjectCache {
 			super(obj, queue);
 			this.key = key;
 		}
-
+		
 		/**
 		 * Return object key
-		 * @return object key
 		 */
 		long getKey() {
 			return key;
 		}
 	}
-
+	
 }

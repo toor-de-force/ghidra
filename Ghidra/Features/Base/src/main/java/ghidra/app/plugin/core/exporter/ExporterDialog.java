@@ -499,7 +499,9 @@ public class ExporterDialog extends DialogComponentProvider implements AddressFa
 		resultsBuffer.append("Format:                 " + exporter.getName() + "\n\n");
 
 		MessageLog log = exporter.getMessageLog();
-		resultsBuffer.append(log.toString());
+		if (log != null) {
+			resultsBuffer.append(log.toString());
+		}
 
 		HelpLocation helpLocation = new HelpLocation(GenericHelpTopics.ABOUT, "About_Program");
 

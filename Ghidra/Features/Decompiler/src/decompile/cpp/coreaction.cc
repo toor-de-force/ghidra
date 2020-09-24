@@ -607,7 +607,6 @@ int4 ActionLaneDivide::apply(Funcdata &data)
     if (allStorageProcessed) break;
   }
   data.clearLanedAccessMap();
-  data.setLanedRegGenerated();
   return 0;
 }
 
@@ -1077,8 +1076,6 @@ SymbolEntry *ActionConstantPtr::isPointer(AddrSpace *spc,Varnode *vn,PcodeOp *op
     // Make sure the constant is in the expected range for a pointer
     if (spc->getPointerLowerBound() > vn->getOffset())
       return (SymbolEntry *)0;
-    if (spc->getPointerUpperBound() < vn->getOffset())
-      return (SymbolEntry *)0;
     // Check if the constant looks like a single bit or mask
     if (bit_transitions(vn->getOffset(),vn->getSize()) < 3)
       return (SymbolEntry *)0;
@@ -1089,16 +1086,8 @@ SymbolEntry *ActionConstantPtr::isPointer(AddrSpace *spc,Varnode *vn,PcodeOp *op
     // Since we are looking for a global address
     // Assume it is address tied and use empty usepoint
   SymbolEntry *entry = data.getScopeLocal()->getParent()->queryContainer(rampoint,1,Address());
-  if (entry != (SymbolEntry *)0) {
-    Datatype *ptrType = entry->getSymbol()->getType();
-    if (ptrType->getMetatype() == TYPE_ARRAY) {
-      Datatype *ct = ((TypeArray *)ptrType)->getBase();
-      // In the special case of strings (character arrays) we allow the constant pointer to
-      // refer to the middle of the string
-      if (ct->isCharPrint())
-	needexacthit = false;
-    }
-    if (needexacthit && entry->getAddr() != rampoint)
+  if (needexacthit&&(entry != (SymbolEntry *)0)) {
+    if (entry->getAddr() != rampoint)
       return (SymbolEntry *)0;
   }
   return entry;
@@ -1207,6 +1196,7 @@ int4 ActionDeindirect::apply(Funcdata &data)
 	    // We use isInputLocked as a test of whether the
 	    // function pointer prototype has been applied before
 	    fc->forceSet(data,*fp);
+	    data.updateOpFromSpec(fc);
 	    count += 1;
 	  }
 	}
@@ -1219,12 +1209,31 @@ int4 ActionDeindirect::apply(Funcdata &data)
   return 0;
 }
 
+/// Check if the given Varnode has a matching LanedRegister record. If so, add its
+/// storage location to the given function's laned access list.
+/// \param data is the given function
+/// \param vn is the given Varnode
+void ActionVarnodeProps::markLanedVarnode(Funcdata &data,Varnode *vn)
+
+{
+  if (vn->isConstant()) return;
+  Architecture *glb = data.getArch();
+  const LanedRegister *lanedRegister  = glb->getLanedRegister(vn->getAddr(),vn->getSize());
+  if (lanedRegister != (const LanedRegister *)0)
+    data.markLanedVarnode(vn,lanedRegister);
+}
+
 int4 ActionVarnodeProps::apply(Funcdata &data)
 
 {
   Architecture *glb = data.getArch();
   bool cachereadonly = glb->readonlypropagate;
-  int4 pass = data.getHeritagePass();
+  int4 minLanedSize = 1000000;		// Default size meant to filter no Varnodes
+  if (!data.isLanedRegComplete()) {
+    int4 sz = glb->getMinimumLanedRegisterSize();
+    if (sz > 0)
+      minLanedSize = sz;
+  }
   VarnodeLocSet::const_iterator iter;
   Varnode *vn;
 
@@ -1233,29 +1242,9 @@ int4 ActionVarnodeProps::apply(Funcdata &data)
     vn = *iter++;		// Advance iterator in case vn is deleted
     if (vn->isAnnotation()) continue;
     int4 vnSize = vn->getSize();
-    if (vn->isAutoLiveHold()) {
-      if (pass > 0) {
-	if (vn->isWritten()) {
-	  PcodeOp *loadOp = vn->getDef();
-	  if (loadOp->code() == CPUI_LOAD) {
-	    Varnode *ptr = loadOp->getIn(1);
-	    if (ptr->isConstant() || ptr->isReadOnly())
-	      continue;
-	    if (ptr->isWritten()) {
-	      PcodeOp *copyOp = ptr->getDef();
-	      if (copyOp->code() == CPUI_COPY) {
-		ptr = copyOp->getIn(0);
-		if (ptr->isConstant() || ptr->isReadOnly())
-		  continue;
-	      }
-	    }
-	  }
-	}
-	vn->clearAutoLiveHold();
-	count += 1;
-      }
-    }
-    else if (vn->hasActionProperty()) {
+    if (vnSize >= minLanedSize)
+      markLanedVarnode(data, vn);
+    if (vn->hasActionProperty()) {
       if (cachereadonly&&vn->isReadOnly()) {
 	if (data.fillinReadOnly(vn)) // Try to replace vn with its lookup in LoadImage
 	  count += 1;
@@ -2159,6 +2148,7 @@ int4 ActionDefaultParams::apply(Funcdata &data)
 	fc->setInternal(evalfp,data.getArch()->types->getTypeVoid());
     }
     fc->insertPcode(data);	// Insert any necessary pcode
+    data.updateOpFromSpec(fc);
   }
   return 0;			// Indicate success
 }
@@ -2288,16 +2278,6 @@ int4 ActionSetCasts::apply(Funcdata &data)
 	TypePointer *ct = (TypePointer *)op->getIn(0)->getHigh()->getType();
 	if ((ct->getMetatype() != TYPE_PTR)||(ct->getPtrTo()->getSize() != AddrSpace::addressToByteInt(sz, ct->getWordSize())))
 	  data.opUndoPtradd(op,true);
-      }
-      else if (opc == CPUI_PTRSUB) {	// Check for PTRSUB that no longer fits pointer
-	if (!op->getIn(0)->getHigh()->getType()->isPtrsubMatching(op->getIn(1)->getOffset())) {
-	  if (op->getIn(1)->getOffset() == 0) {
-	    data.opRemoveInput(op, 1);
-	    data.opSetOpcode(op, CPUI_COPY);
-	  }
-	  else
-	    data.opSetOpcode(op, CPUI_INT_ADD);
-	}
       }
       for(int4 i=0;i<op->numInput();++i) // Do input casts first, as output may depend on input
 	count += castInput(op,i,data,castStrategy);
@@ -3424,84 +3404,6 @@ uintb ActionDeadCode::gatherConsumedReturn(Funcdata &data)
   return consumeVal;
 }
 
-/// \brief Determine if the given Varnode may eventually collapse to a constant
-///
-/// Recursively check if the Varnode is either:
-///   - Copied from a constant
-///   - The result of adding constants
-///   - Loaded from a pointer that is a constant
-///
-/// \param vn is the given Varnode
-/// \param addCount is the number of CPUI_INT_ADD operations seen so far
-/// \param loadCount is the number of CPUI_LOAD operations seen so far
-/// \return \b true if the Varnode (might) collapse to a constant
-bool ActionDeadCode::isEventualConstant(Varnode *vn,int4 addCount,int4 loadCount)
-
-{
-  if (vn->isConstant()) return true;
-  if (!vn->isWritten()) return false;
-  PcodeOp *op = vn->getDef();
-  while(op->code() == CPUI_COPY) {
-    vn = op->getIn(0);
-    if (vn->isConstant()) return true;
-    if (!vn->isWritten()) return false;
-    op = vn->getDef();
-  }
-  switch(op->code()) {
-    case CPUI_INT_ADD:
-      if (addCount > 0) return false;
-      if (!isEventualConstant(op->getIn(0),addCount+1,loadCount))
-	return false;
-      return isEventualConstant(op->getIn(1),addCount+1,loadCount);
-    case CPUI_LOAD:
-      if (loadCount > 0) return false;
-      return isEventualConstant(op->getIn(1),0,loadCount+1);
-    case CPUI_INT_LEFT:
-    case CPUI_INT_RIGHT:
-    case CPUI_INT_SRIGHT:
-    case CPUI_INT_MULT:
-      if (!op->getIn(1)->isConstant())
-	return false;
-      return isEventualConstant(op->getIn(0),addCount,loadCount);
-    case CPUI_INT_ZEXT:
-    case CPUI_INT_SEXT:
-      return isEventualConstant(op->getIn(0),addCount,loadCount);
-    default:
-      break;
-  }
-  return false;
-}
-
-/// \brief Check if there are any unconsumed LOADs that may be from volatile addresses.
-///
-/// It may be too early to remove certain LOAD operations even though their result isn't
-/// consumed because it be of a volatile address with side effects.  If a LOAD meets this
-/// criteria, it is added to the worklist and \b true is returned.
-/// \param data is the function being analyzed
-/// \return \b true if there was at least one LOAD added to the worklist
-bool ActionDeadCode::lastChanceLoad(Funcdata &data,vector<Varnode *> &worklist)
-
-{
-  if (data.getHeritagePass() > 1) return false;
-  if (data.isJumptableRecoveryOn()) return false;
-  list<PcodeOp *>::const_iterator iter = data.beginOp(CPUI_LOAD);
-  list<PcodeOp *>::const_iterator enditer = data.endOp(CPUI_LOAD);
-  bool res = false;
-  while(iter != enditer) {
-    PcodeOp *op = *iter;
-    ++iter;
-    if (op->isDead()) continue;
-    Varnode *vn = op->getOut();
-    if (vn->isConsumeVacuous()) continue;
-    if (isEventualConstant(op->getIn(1), 0, 0)) {
-      pushConsumed(~(uintb)0, vn, worklist);
-      vn->setAutoLiveHold();
-      res = true;
-    }
-  }
-  return res;
-}
-
 int4 ActionDeadCode::apply(Funcdata &data)
 
 {
@@ -3544,11 +3446,11 @@ int4 ActionDeadCode::apply(Funcdata &data)
 
     op->clearIndirectSource();
     if (op->isCall()) {
-      // Postpone setting consumption on CALL and CALLIND inputs
-      if (op->isCallWithoutSpec()) {
+      if (op->code() == CPUI_CALLOTHER) {
 	for(i=0;i<op->numInput();++i)
 	  pushConsumed(~((uintb)0),op->getIn(i),worklist);
       }
+      // Postpone setting consumption on CALL and CALLIND inputs
       if (!op->isAssignment())
 	continue;
     }
@@ -3594,11 +3496,6 @@ int4 ActionDeadCode::apply(Funcdata &data)
 				// Propagate the consume flags
   while(!worklist.empty())
     propagateConsumed(worklist);
-
-  if (lastChanceLoad(data, worklist)) {
-    while(!worklist.empty())
-      propagateConsumed(worklist);
-  }
 
   for(i=0;i<manage->numSpaces();++i) {
     spc = manage->getSpace(i);
@@ -3934,9 +3831,9 @@ int4 ActionInputPrototype::apply(Funcdata &data)
       }
     }
     if (data.isHighOn())
-      data.getFuncProto().updateInputTypes(data,triallist,&active);
+      data.getFuncProto().updateInputTypes(triallist,&active);
     else
-      data.getFuncProto().updateInputNoTypes(data,triallist,&active);
+      data.getFuncProto().updateInputNoTypes(triallist,&active,data.getArch()->types);
   }
   data.clearDeadVarnodes();
 #ifdef OPACTION_DEBUG
@@ -4748,7 +4645,6 @@ int4 ActionInferTypes::apply(Funcdata &data)
     }
     return 0;
   }
-  data.getScopeLocal()->applyTypeRecommendations();
   buildLocaltypes(data);	// Set up initial types (based on local info)
   for(iter=data.beginLoc();iter!=data.endLoc();++iter) {
     vn = *iter;
@@ -4828,12 +4724,11 @@ void TermOrder::sortTerms(void)
   sort(sorter.begin(),sorter.end(),additiveCompare);
 }
 
-/// (Re)build the default \e root Actions: decompile, jumptable, normalize, paramid, register, firstpass
-void ActionDatabase::buildDefaultGroups(void)
+/// Build the default \e root Actions: decompile, jumptable, normalize, paramid, register, firstpass
+/// \param allacts is the database that will hold the \e root Actions
+void build_defaultactions(ActionDatabase &allacts)
 
 {
-  if (isDefaultGroups) return;
-  groupmap.clear();
   const char *members[] = { "base", "protorecovery", "protorecovery_a", "deindirect", "localrecovery",
 			    "deadcode", "typerecovery", "stackptrflow",
 			    "blockrecovery", "stackvars", "deadcontrolflow", "switchnorm",
@@ -4842,37 +4737,36 @@ void ActionDatabase::buildDefaultGroups(void)
 			    "segment", "returnsplit", "nodejoin", "doubleload", "doubleprecis",
 			    "unreachable", "subvar", "floatprecision", 
 			    "conditionalexe", "" };
-  setGroup("decompile",members);
+  allacts.setGroup("decompile",members);
 
   const char *jumptab[] = { "base", "noproto", "localrecovery", "deadcode", "stackptrflow",
 			    "stackvars", "analysis", "segment", "subvar", "conditionalexe", "" };
-  setGroup("jumptable",jumptab);
+  allacts.setGroup("jumptable",jumptab);
 
  const  char *normali[] = { "base", "protorecovery", "protorecovery_b", "deindirect", "localrecovery",
 			    "deadcode", "stackptrflow", "normalanalysis",
 			    "stackvars", "deadcontrolflow", "analysis", "fixateproto", "nodejoin",
 			    "unreachable", "subvar", "floatprecision", "normalizebranches",
 			    "conditionalexe", "" };
-  setGroup("normalize",normali);
+  allacts.setGroup("normalize",normali);
 
   const  char *paramid[] = { "base", "protorecovery", "protorecovery_b", "deindirect", "localrecovery",
                              "deadcode", "typerecovery", "stackptrflow", "siganalysis",
                              "stackvars", "deadcontrolflow", "analysis", "fixateproto",
                              "unreachable", "subvar", "floatprecision",
                              "conditionalexe", "" };
-  setGroup("paramid",paramid);
+  allacts.setGroup("paramid",paramid);
 
   const char *regmemb[] = { "base", "analysis", "subvar", "" };
-  setGroup("register",regmemb);
+  allacts.setGroup("register",regmemb);
 
   const char *firstmem[] = { "base", "" };
-  setGroup("firstpass",firstmem);
-  isDefaultGroups = true;
+  allacts.setGroup("firstpass",firstmem);
 }
 
 /// Construct the \b universal Action that contains all possible components
 /// \param conf is the Architecture that will use the Action
-void ActionDatabase::universalAction(Architecture *conf)
+void universal_action(Architecture *conf)
 
 {
   vector<Rule *>::iterator iter;
@@ -4884,8 +4778,9 @@ void ActionDatabase::universalAction(Architecture *conf)
   ActionGroup *actstackstall;
   AddrSpace *stackspace = conf->getStackSpace();
 
+  build_defaultactions(conf->allacts);
   act = new ActionRestartGroup(Action::rule_onceperfunc,"universal",1);
-  registerAction(universalname,act);
+  conf->allacts.registerUniversal(act);
 
   act->addAction( new ActionStart("base"));
   act->addAction( new ActionConstbase("base"));
